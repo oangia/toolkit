@@ -7,10 +7,5 @@ name = "toolkit"
 version = "0.1.0"
 description = "A clean utility class for image loading, resizing, edges, and clustering."
 dependencies = [
-    "numpy",
-    "torch",
-    "torchvision",
-    "Pillow",
-    "scipy",
-    "scikit-learn"
+
 ]
