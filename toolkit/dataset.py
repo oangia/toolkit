@@ -12,7 +12,8 @@ class MultiPairDataset(Dataset):
         self.augment = augment
         transform = transforms.Compose([
             transforms.Resize((input_size, input_size)),
-            transforms.ToTensor()
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # Scales [0, 1] to [-1, 1]
         ])
 
         for inp_p, tgt_p in zip(inp_paths, tgt_paths):
