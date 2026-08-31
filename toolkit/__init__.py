@@ -1,2 +1,2 @@
-from .handler import ImageHandler
+from .handler import Image
 from .unet import UNet
