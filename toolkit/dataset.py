@@ -3,6 +3,7 @@ import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
+from toolkit import Image
 
 class MultiPairDataset(Dataset):
     def __init__(self, inp_paths, tgt_paths, length=None, augment=False, input_size=256):
