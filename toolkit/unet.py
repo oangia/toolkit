@@ -140,3 +140,27 @@ class UNet(nn.Module):
         x = self.conv7(x)
 
         return self.tanh(self.outc(x))
+
+class PatchDiscriminator(nn.Module):
+    def __init__(self, in_channels=6): # 3 channels for input + 3 channels for target/fake
+        super(PatchDiscriminator, self).__init__()
+        def discriminator_block(in_filters, out_filters, normalization=True):
+            layers = [nn.Conv2d(in_filters, out_filters, 4, stride=2, padding=1)]
+            if normalization:
+                layers.append(nn.InstanceNorm2d(out_filters))
+            layers.append(nn.LeakyReLU(0.2, inplace=True))
+            return layers
+
+        self.model = nn.Sequential(
+            *discriminator_block(in_channels, 64, normalization=False),
+            *discriminator_block(64, 128),
+            *discriminator_block(128, 256),
+            *discriminator_block(256, 512),
+            nn.ZeroPad2d((1, 1, 1, 1)),
+            nn.Conv2d(512, 1, 4, padding=1) # Outputs a patch map of logits
+        )
+
+    def forward(self, img_input, img_target):
+        # Concatenate image and condition/target along channels
+        img_input = torch.cat((img_input, img_target), 1)
+        return self.model(img_input)
