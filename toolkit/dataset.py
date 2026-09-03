@@ -228,24 +228,26 @@ class YOLODataset(inn.BaseImageDataset):
         target_small, target_medium, target_large = t_tgt
         img = (self._inp(t_inp) * 255).astype(np.uint8).copy()
         
-        # Define grid layers with their size, line color, and bounding box color
-        layers = [
-            (target_small, 32, (255, 100, 100)), # Small objects -> Finer grid (Red-ish)
-            (target_medium, 16, (100, 255, 100)), # Medium objects -> Medium grid (Green-ish)
-            (target_large, 8, (100, 100, 255))    # Large objects -> Coarser grid (Blue-ish)
+        grids = [
+            (target_small, 32, (255, 0, 0)),    # Small scale grid (Blue lines)
+            (target_medium, 16, (0, 255, 255)), # Medium scale grid (Yellow lines)
+            (target_large, 8, (255, 0, 255))    # Large scale grid (Magenta lines)
         ]
         
-        for grid, S, grid_color in layers:
+        # 1. Draw grid cell lines over the image to visualize structural resolution
+        for _, S, color in grids:
             cell_size = self.img_size // S
+            for i in range(1, S):
+                pt = i * cell_size
+                # Draw faint grid lines
+                cv2.line(img, (pt, 0), (pt, self.img_size), color, 1)
+                cv2.line(img, (0, pt), (self.img_size, pt), color, 1)
+
+        # 2. Draw object bounding boxes mapped to the feature grid
+        for grid, S, _ in grids:
             for gy in range(S):
                 for gx in range(S):
                     if grid[gy, gx, 0] > 0:
-                        # 1. Draw ONLY the local grid cell where this object landed
-                        x1_cell = gx * cell_size
-                        y1_cell = gy * cell_size
-                        cv2.rectangle(img, (x1_cell, y1_cell), (x1_cell + cell_size, y1_cell + cell_size), grid_color, 1)
-                        
-                        # 2. Decode and draw the bounding box
                         cell_data = grid[gy, gx].tolist()
                         _, tx, ty, w, h = cell_data
                         
@@ -257,6 +259,6 @@ class YOLODataset(inn.BaseImageDataset):
                         ymin = int((cy - h / 2) * self.img_size)
                         ymax = int((cy + h / 2) * self.img_size)
                         
-                        cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 255), 2)
+                        cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
                         
         return img.astype(np.float32) / 255.0
