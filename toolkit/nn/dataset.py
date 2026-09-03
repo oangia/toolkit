@@ -47,7 +47,7 @@ class BaseImageDataset(Dataset):
         for idx in range(num_to_show):
             t_inp, t_tgt = self[idx]
 
-            fig, axes = plt.subplots(1, 2, figsize=(4, 2))
+            fig, axes = plt.subplots(1, 2, figsize=(8, 4))
             axes[0].imshow(self._inp(t_inp))
             axes[0].set_title(f"Input [{idx}]")
             axes[0].axis('off')
