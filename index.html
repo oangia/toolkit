@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photoshop Web - Tailwind Plugin Suite</title>
+    
+    <!-- Cropper.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
+    
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        .custom-checkered {
+            background-image: linear-gradient(45deg, #181818 25%, transparent 25%), 
+                              linear-gradient(-45deg, #181818 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #181818 75%), 
+                              linear-gradient(-45deg, transparent 75%, #181818 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+    </style>
+</head>
+<body class="bg-[#1e1e1e] text-[#cccccc] h-screen flex flex-col overflow-hidden text-[13px] select-none">
+
+    <!-- Top Menu Bar -->
+    <div class="bg-[#252526] h-[35px] flex items-center px-4 border-b border-[#3f3f46] justify-between shrink-0">
+        <div class="font-bold text-white flex items-center gap-2">
+            <span>🔲</span> Ps <span class="font-normal text-xs text-[#007acc]">Tailwind Plugin Studio</span>
+        </div>
+        <div class="flex gap-2 items-center">
+            <label for="upload-input" class="bg-[#333333] hover:bg-[#3a3d41] text-white border border-[#3f3f46] px-3 py-1 rounded cursor-pointer transition text-xs">Open Image</label>
+            <input type="file" id="upload-input" accept="image/*" class="hidden">
+            <button id="save-btn" class="bg-[#007acc] hover:bg-[#0062a3] text-white border border-[#007acc] px-3 py-1 rounded cursor-pointer transition text-xs font-medium">Export JPG</button>
+        </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="flex flex-1 h-[calc(100vh-35px)] relative overflow-hidden">
+        
+        <!-- Left Toolbar -->
+        <div id="toolbar" class="w-[50px] bg-[#252526] border-r border-[#3f3f46] flex flex-col items-center pt-2.5 gap-1.5 shrink-0"></div>
+
+        <!-- Center Canvas Container -->
+        <div class="flex-1 custom-checkered flex justify-center items-center relative overflow-auto" id="scroll-viewport">
+            <div class="relative inline-block shadow-2xl transition-transform duration-100 ease-out origin-center" id="canvas-container">
+                <div id="tool-cursor" class="absolute border border-white shadow-[0_0_2px_#000] rounded-full pointer-events-none -translate-x-1/2 -translate-y-1/2 hidden z-10"></div>
+                <canvas id="imageCanvas" class="block max-w-none"></canvas>
+                <img id="cropper-img" alt="Crop Area" class="max-w-full hidden">
+            </div>
+        </div>
+
+        <!-- Right Properties Panel -->
+        <div id="properties-panel" class="w-[270px] bg-[#252526] border-l border-[#3f3f46] flex flex-col p-3 gap-3 overflow-y-auto shrink-0"></div>
+
+    </div>
+
+    <!-- Cropper.js JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script>
+      // --- BASE PLUGIN SCHEMA ---
+class EditorPlugin {
+    constructor(name, icon) {
+        this.name = name;
+        this.icon = icon;
+        this.editor = null;
+        this.toolbarBtn = null;
+    }
+    createToolSection(title) {
+        const section = document.createElement('div');
+        section.className = 'bg-[#333333] rounded-md p-2.5 flex flex-col gap-2 tool-section';
+        section.innerHTML = `<div class="font-bold text-white text-[11px] uppercase tracking-wider border-b border-[#3f3f46] pb-1">${title}</div>`;
+        this.editor.propertiesPanel.insertBefore(section, this.editor.propertiesPanel.firstChild);
+        return section;
+    }
+}
+
+// --- 1. BRUSH TOOL PLUGIN ---
+class BrushPlugin extends EditorPlugin {
+    constructor() {
+        super('Brush Tool', '🖌️');
+        this.size = 5;
+        this.color = '#000000';
+        this.isDrawing = false;
+    }
+    onActivate() {
+        const section = this.createToolSection('Brush Properties');
+        section.innerHTML += `
+            <div class="flex items-center justify-between gap-2"><label class="text-xs">Size</label><input type="range" id="b-size" min="1" max="50" value="${this.size}" class="flex-1 accent-[#007acc] cursor-pointer"><span id="b-sz-val" class="w-[30px] text-right text-xs">${this.size}px</span></div>
+            <div class="flex items-center justify-between gap-2"><label class="text-xs">Color</label><input type="color" id="b-color" value="${this.color}" class="border-none w-7 h-7 rounded cursor-pointer bg-transparent"></div>
+        `;
+        
+        document.getElementById('b-size').oninput = (e) => { this.size = e.target.value; document.getElementById('b-sz-val').textContent = this.size + 'px'; this.updateCursor(); };
+        document.getElementById('b-color').oninput = (e) => { this.color = e.target.value; this.updateCursor(); };
+        
+        const canvas = this.editor.canvas;
+        canvas.onmouseenter = () => this.editor.cursor.style.display = 'block';
+        canvas.onmouseleave = () => { this.isDrawing = false; this.editor.cursor.style.display = 'none'; };
+        
+        canvas.onmousemove = (e) => {
+            this.moveCursor(e);
+            if (!this.isDrawing) return;
+            const pos = this.getPos(e);
+            this.editor.ctx.lineTo(pos.x, pos.y);
+            this.editor.ctx.strokeStyle = this.color;
+            this.editor.ctx.lineWidth = this.size;
+            this.editor.ctx.lineCap = 'round';
+            this.editor.ctx.stroke();
+        };
+
+        canvas.onmousedown = (e) => {
+            this.isDrawing = true;
+            const pos = this.getPos(e);
+            this.editor.ctx.beginPath();
+            this.editor.ctx.moveTo(pos.x, pos.y);
+        };
+
+        window.onmouseup = () => { if(this.isDrawing) { this.isDrawing = false; this.editor.updateSnapshot(); } };
+        this.updateCursor();
+    }
+    moveCursor(e) {
+        const rect = this.editor.canvas.getBoundingClientRect();
+        this.editor.cursor.style.left = (e.clientX - rect.left) + 'px';
+        this.editor.cursor.style.top = (e.clientY - rect.top) + 'px';
+    }
+    updateCursor() {
+        const rect = this.editor.canvas.getBoundingClientRect();
+        if (rect.width > 0) {
+            const scale = rect.width / this.editor.canvas.width;
+            const displaySize = this.size * scale * this.editor.zoomLevel;
+            this.editor.cursor.style.width = displaySize + 'px';
+            this.editor.cursor.style.height = displaySize + 'px';
+            this.editor.cursor.style.backgroundColor = this.color + '44';
+            this.editor.cursor.style.borderColor = '#fff';
+        }
+    }
+    getPos(evt) {
+        const rect = this.editor.canvas.getBoundingClientRect();
+        return {
+            x: (evt.clientX - rect.left) * (this.editor.canvas.width / rect.width),
+            y: (evt.clientY - rect.top) * (this.editor.canvas.height / rect.height)
+        };
+    }
+    onDeactivate() {
+        this.editor.canvas.onmousedown = null;
+        this.editor.canvas.onmousemove = null;
+        this.editor.cursor.style.display = 'none';
+    }
+}
+
+// --- 2. ERASER TOOL PLUGIN ---
+class EraserPlugin extends EditorPlugin {
+    constructor() {
+        super('Eraser Tool', '🧹');
+        this.size = 15;
+        this.isDrawing = false;
+    }
+    onActivate() {
+        const section = this.createToolSection('Eraser Properties');
+        section.innerHTML += `
+            <div class="flex items-center justify-between gap-2"><label class="text-xs">Size</label><input type="range" id="e-size" min="2" max="100" value="${this.size}" class="flex-1 accent-[#007acc] cursor-pointer"><span id="e-sz-val" class="w-[30px] text-right text-xs">${this.size}px</span></div>
+        `;
+        document.getElementById('e-size').oninput = (e) => { this.size = e.target.value; document.getElementById('e-sz-val').textContent = this.size + 'px'; this.updateCursor(); };
+
+        const canvas = this.editor.canvas;
+        canvas.onmouseenter = () => this.editor.cursor.style.display = 'block';
+        canvas.onmouseleave = () => { this.isDrawing = false; this.editor.cursor.style.display = 'none'; };
+
+        canvas.onmousemove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            this.editor.cursor.style.left = (e.clientX - rect.left) + 'px';
+            this.editor.cursor.style.top = (e.clientY - rect.top) + 'px';
+
+            if (!this.isDrawing) return;
+            const pos = this.getPos(e);
+            this.editor.ctx.save();
+            this.editor.ctx.beginPath();
+            this.editor.ctx.arc(pos.x, pos.y, this.size / 2, 0, Math.PI * 2);
+            this.editor.ctx.clip();
+            this.editor.ctx.clearRect(0, 0, canvas.width, canvas.height);
+            this.editor.ctx.drawImage(this.editor.loadedImage, 0, 0);
+            this.editor.ctx.restore();
+        };
+
+        canvas.onmousedown = () => { this.isDrawing = true; };
+        window.onmouseup = () => { if(this.isDrawing) { this.isDrawing = false; this.editor.updateSnapshot(); } };
+        this.updateCursor();
+    }
+    updateCursor() {
+        const rect = this.editor.canvas.getBoundingClientRect();
+        if (rect.width > 0) {
+            const scale = rect.width / this.editor.canvas.width;
+            const displaySize = this.size * scale * this.editor.zoomLevel;
+            this.editor.cursor.style.width = displaySize + 'px';
+            this.editor.cursor.style.height = displaySize + 'px';
+            this.editor.cursor.style.backgroundColor = 'rgba(255,255,255,0.3)';
+            this.editor.cursor.style.borderColor = '#000';
+        }
+    }
+    getPos(evt) {
+        const rect = this.editor.canvas.getBoundingClientRect();
+        return {
+            x: (evt.clientX - rect.left) * (this.editor.canvas.width / rect.width),
+            y: (evt.clientY - rect.top) * (this.editor.canvas.height / rect.height)
+        };
+    }
+    onDeactivate() {
+        this.editor.canvas.onmousedown = null;
+        this.editor.canvas.onmousemove = null;
+        this.editor.cursor.style.display = 'none';
+    }
+}
+
+// --- 3. EYEDROPPER TOOL PLUGIN ---
+class EyedropperPlugin extends EditorPlugin {
+    constructor() {
+        super('Eyedropper Tool', '💧');
+    }
+    onActivate() {
+        const section = this.createToolSection('Eyedropper');
+        section.innerHTML += `<div class="text-[11px] text-[#aaa]">Click canvas to sample color.</div>`;
+        this.editor.canvas.style.cursor = 'crosshair';
+        
+        this.editor.canvas.onclick = (e) => {
+            const pos = this.getPos(e);
+            const pixel = this.editor.ctx.getImageData(pos.x, pos.y, 1, 1).data;
+            const hex = '#' + [pixel[0], pixel[1], pixel[2]].map(x => x.toString(16).padStart(2, '0')).join('');
+            
+            const brushPlugin = this.editor.plugins.get('brush');
+            if(brushPlugin) brushPlugin.color = hex;
+            this.editor.switchPlugin('brush');
+        };
+    }
+    getPos(evt) {
+        const rect = this.editor.canvas.getBoundingClientRect();
+        return {
+            x: (evt.clientX - rect.left) * (this.editor.canvas.width / rect.width),
+            y: (evt.clientY - rect.top) * (this.editor.canvas.height / rect.height)
+        };
+    }
+    onDeactivate() {
+        this.editor.canvas.onclick = null;
+        this.editor.canvas.style.cursor = 'default';
+    }
+}
+
+// --- 4. CROP TOOL PLUGIN ---
+class CropPlugin extends EditorPlugin {
+    constructor() {
+        super('Crop Tool', '📐');
+        this.cropper = null;
+    }
+    onActivate() {
+        const section = this.createToolSection('Crop Options');
+        section.innerHTML += `
+            <div class="grid grid-cols-2 gap-1.5">
+                <button class="preset-btn bg-[#1e1e1e] border border-[#007acc] text-white bg-[#007acc]/20 p-1 text-[11px] rounded cursor-pointer" data-ratio="NaN">Freeform</button>
+                <button class="preset-btn bg-[#1e1e1e] border border-[#3f3f46] text-[#cccccc] p-1 text-[11px] rounded cursor-pointer" data-ratio="1">1:1 Square</button>
+            </div>
+            <button id="apply-crop" class="bg-[#007acc] hover:bg-[#0062a3] text-white border border-[#007acc] py-1 px-3 rounded text-xs transition text-center mt-1 font-medium">Apply Crop</button>
+        `;
+        
+        const imgEl = document.getElementById('cropper-img');
+        imgEl.src = this.editor.canvas.toDataURL();
+        this.editor.canvas.style.display = 'none';
+        imgEl.style.display = 'block';
+
+        this.cropper = new Cropper(imgEl, { viewMode: 1 });
+        
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('border-[#007acc]', 'text-white', 'bg-[#007acc]/20'));
+                e.target.classList.add('border-[#007acc]', 'text-white', 'bg-[#007acc]/20');
+                this.cropper.setAspectRatio(parseFloat(e.target.getAttribute('data-ratio')));
+            };
+        });
+
+        document.getElementById('apply-crop').onclick = () => {
+            const croppedCanvas = this.cropper.getCroppedCanvas();
+            this.editor.canvas.width = croppedCanvas.width;
+            this.editor.canvas.height = croppedCanvas.height;
+            this.editor.ctx.drawImage(croppedCanvas, 0, 0);
+            this.editor.dimensionsLabel.textContent = `${this.editor.canvas.width} x ${this.editor.canvas.height}px`;
+            this.editor.updateSnapshot();
+            this.editor.switchPlugin('brush');
+        };
+    }
+    onDeactivate() {
+        if (this.cropper) { this.cropper.destroy(); this.cropper = null; }
+        document.getElementById('cropper-img').style.display = 'none';
+        this.editor.canvas.style.display = 'block';
+    }
+}
+
+// --- 5. NEW: RECTANGLE TOOL PLUGIN ---
+class RectanglePlugin extends EditorPlugin {
+    constructor() {
+        super('Rectangle Tool', '⏹️');
+        this.color = '#ff0000';
+        this.lineWidth = 3;
+        this.startX = 0;
+        this.startY = 0;
+        this.isDrawing = false;
+    }
+    onActivate() {
+        const section = this.createToolSection('Shape Properties');
+        section.innerHTML += `
+            <div class="flex items-center justify-between gap-2"><label class="text-xs">Border</label><input type="range" id="r-width" min="1" max="20" value="${this.lineWidth}" class="flex-1 accent-[#007acc] cursor-pointer"><span id="r-w-val" class="w-[30px] text-right text-xs">${this.lineWidth}px</span></div>
+            <div class="flex items-center justify-between gap-2"><label class="text-xs">Color</label><input type="color" id="r-color" value="${this.color}" class="border-none w-7 h-7 rounded cursor-pointer bg-transparent"></div>
+        `;
+        document.getElementById('r-width').oninput = (e) => { this.lineWidth = e.target.value; document.getElementById('r-w-val').textContent = this.lineWidth + 'px'; };
+        document.getElementById('r-color').oninput = (e) => { this.color = e.target.value; };
+
+        const canvas = this.editor.canvas;
+        canvas.style.cursor = 'crosshair';
+
+        canvas.onmousedown = (e) => {
+            this.isDrawing = true;
+            const pos = this.getPos(e);
+            this.startX = pos.x;
+            this.startY = pos.y;
+        };
+
+        canvas.onmousemove = (e) => {
+            if (!this.isDrawing) return;
+            const pos = this.getPos(e);
+            this.editor.ctx.clearRect(0, 0, canvas.width, canvas.height);
+            this.editor.ctx.drawImage(this.editor.loadedImage, 0, 0);
+            
+            this.editor.ctx.strokeStyle = this.color;
+            this.editor.ctx.lineWidth = this.lineWidth;
+            this.editor.ctx.strokeRect(this.startX, this.startY, pos.x - this.startX, pos.y - this.startY);
+        };
+
+        window.onmouseup = (e) => {
+            if (!this.isDrawing) return;
+            this.isDrawing = false;
+            const pos = this.getPos(e);
+            this.editor.ctx.strokeStyle = this.color;
+            this.editor.ctx.lineWidth = this.lineWidth;
+            this.editor.ctx.strokeRect(this.startX, this.startY, pos.x - this.startX, pos.y - this.startY);
+            this.editor.updateSnapshot();
+        };
+    }
+    getPos(evt) {
+        const rect = this.editor.canvas.getBoundingClientRect();
+        return {
+            x: (evt.clientX - rect.left) * (this.editor.canvas.width / rect.width),
+            y: (evt.clientY - rect.top) * (this.editor.canvas.height / rect.height)
+        };
+    }
+    onDeactivate() {
+        this.editor.canvas.onmousedown = null;
+        this.editor.canvas.onmousemove = null;
+        this.editor.canvas.style.cursor = 'default';
+    }
+}
+
+// --- 6. NEW: TEXT WATERMARK TOOL PLUGIN ---
+class TextPlugin extends EditorPlugin {
+    constructor() {
+        super('Text Tool', '✍️');
+        this.text = 'Photoshop Web';
+        this.fontSize = 32;
+        this.color = '#ffffff';
+    }
+    onActivate() {
+        const section = this.createToolSection('Text Properties');
+        section.innerHTML += `
+            <div class="flex flex-col gap-1"><label class="text-xs">Content</label><input type="text" id="t-content" value="${this.text}" class="bg-[#1e1e1e] border border-[#3f3f46] text-white p-1 rounded text-xs"></div>
+            <div class="flex items-center justify-between gap-2 mt-1"><label class="text-xs">Size</label><input type="range" id="t-size" min="10" max="100" value="${this.fontSize}" class="flex-1 accent-[#007acc] cursor-pointer"><span id="t-sz-val" class="w-[30px] text-right text-xs">${this.fontSize}px</span></div>
+            <div class="flex items-center justify-between gap-2"><label class="text-xs">Color</label><input type="color" id="t-color" value="${this.color}" class="border-none w-7 h-7 rounded cursor-pointer bg-transparent"></div>
+            <button id="commit-text" class="bg-[#007acc] hover:bg-[#0062a3] text-white border border-[#007acc] py-1 rounded text-xs transition text-center mt-1 font-medium">Stamp Text on Center</button>
+        `;
+        document.getElementById('t-content').oninput = (e) => { this.text = e.target.value; };
+        document.getElementById('t-size').oninput = (e) => { this.fontSize = e.target.value; document.getElementById('t-sz-val').textContent = this.fontSize + 'px'; };
+        document.getElementById('t-color').oninput = (e) => { this.color = e.target.value; };
+
+        document.getElementById('commit-text').onclick = () => {
+            const ctx = this.editor.ctx;
+            ctx.font = `${this.fontSize}px sans-serif`;
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.shadowBlur = 4;
+            ctx.fillText(this.text, this.editor.canvas.width / 2 - 50, this.editor.canvas.height / 2);
+            ctx.shadowBlur = 0; // reset shadow
+            this.editor.updateSnapshot();
+        };
+    }
+}
+
+// --- 7. NEW: BLUR EFFECT PLUGIN ---
+class BlurPlugin extends EditorPlugin {
+    constructor() {
+        super('Blur Filter', '💧');
+    }
+    onActivate() {
+        const section = this.createToolSection('Blur Filter');
+        section.innerHTML += `
+            <div class="text-[11px] text-[#aaa]">Softens image focus matrix pixels.</div>
+            <button id="apply-blur" class="bg-[#007acc] hover:bg-[#0062a3] text-white border border-[#007acc] py-1 rounded text-xs transition text-center font-medium mt-1">Apply Box Blur</button>
+        `;
+        document.getElementById('apply-blur').onclick = () => {
+            const ctx = this.editor.ctx;
+            const w = this.editor.canvas.width;
+            const h = this.editor.canvas.height;
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            const temp = new Uint8ClampedArray(data);
+
+            // Simple 3x3 block kernel pass
+            for (let y = 1; y < h - 1; y++) {
+                for (let x = 1; x < w - 1; x++) {
+                    for (let c = 0; c < 3; c++) {
+                        let sum = 0;
+                        for (let dy = -1; dy <= 1; dy++) {
+                            for (let dx = -1; dx <= 1; dx++) {
+                                let idx = ((y + dy) * w + (x + dx)) * 4 + c;
+                                sum += temp[idx];
+                            }
+                        }
+                        data[(y * w + x) * 4 + c] = sum / 9;
+                    }
+                }
+            }
+            ctx.putImageData(imgData, 0, 0);
+            this.editor.updateSnapshot();
+        };
+    }
+}
+    </script>
+    <script>
+        // --- CENTRAL MAINBOARD (HUB) ---
+        class ImageEditor {
+            constructor() {
+                this.canvas = document.getElementById('imageCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.toolbar = document.getElementById('toolbar');
+                this.propertiesPanel = document.getElementById('properties-panel');
+                this.canvasContainer = document.getElementById('canvas-container');
+                this.cursor = document.getElementById('tool-cursor');
+                this.dimensionsLabel = document.createElement('span');
+                
+                this.plugins = new Map();
+                this.activePlugin = null;
+                this.loadedImage = new Image();
+                this.zoomLevel = 1;
+
+                this.initDefaults();
+                this.bindGlobalEvents();
+                this.initGlobalPanels();
+            }
+
+            initDefaults() {
+                this.loadedImage.crossOrigin = "anonymous";
+                this.loadedImage.src = "https://images.unsplash.com/photo-1575936123452-b67c3203c357?auto=format&fit=crop&w=800&q=80";
+                this.loadedImage.onload = () => this.resetCanvasToImage(this.loadedImage);
+            }
+
+            resetCanvasToImage(img) {
+                this.canvas.width = img.naturalWidth || img.width;
+                this.canvas.height = img.naturalHeight || img.height;
+                this.ctx.drawImage(img, 0, 0);
+                this.dimensionsLabel.textContent = `${this.canvas.width} x ${this.canvas.height}px`;
+            }
+
+            updateSnapshot() {
+                this.loadedImage = new Image();
+                this.loadedImage.src = this.canvas.toDataURL();
+            }
+
+            registerPlugin(id, pluginInstance, isDefault = false) {
+                pluginInstance.editor = this;
+                this.plugins.set(id, pluginInstance);
+
+                const btn = document.createElement('button');
+                btn.className = 'w-9 h-9 bg-transparent border-none text-[#cccccc] hover:bg-[#3a3d41] hover:text-white rounded cursor-pointer flex items-center justify-center text-base transition relative';
+                btn.innerHTML = pluginInstance.icon;
+                btn.title = pluginInstance.name;
+                btn.onclick = () => this.switchPlugin(id);
+                this.toolbar.appendChild(btn);
+                pluginInstance.toolbarBtn = btn;
+
+                if (isDefault || !this.activePlugin) {
+                    this.switchPlugin(id);
+                }
+            }
+
+            switchPlugin(id) {
+                if (this.activePlugin && this.activePlugin.onDeactivate) {
+                    this.activePlugin.onDeactivate();
+                    if (this.activePlugin.toolbarBtn) this.activePlugin.toolbarBtn.classList.remove('bg-[#007acc]', 'text-white');
+                }
+
+                this.activePlugin = this.plugins.get(id);
+                if (this.activePlugin.toolbarBtn) this.activePlugin.toolbarBtn.classList.add('bg-[#007acc]', 'text-white');
+                
+                const dynamicSections = this.propertiesPanel.querySelectorAll('.tool-section');
+                dynamicSections.forEach(sec => sec.remove());
+
+                if (this.activePlugin.onActivate) this.activePlugin.onActivate();
+            }
+
+            initGlobalPanels() {
+                // Filters & Tones Panel
+                const filterSection = document.createElement('div');
+                filterSection.className = 'bg-[#333333] rounded-md p-2.5 flex flex-col gap-2';
+                filterSection.innerHTML = `
+                    <div class="font-bold text-white text-[11px] uppercase tracking-wider border-b border-[#3f3f46] pb-1">Filters & Tones</div>
+                    <div class="flex gap-1.5">
+                        <button id="filter-grayscale" class="flex-1 bg-[#333333] hover:bg-[#3a3d41] text-white border border-[#3f3f46] py-1 rounded text-xs transition text-center">Grayscale</button>
+                        <button id="filter-invert" class="flex-1 bg-[#333333] hover:bg-[#3a3d41] text-white border border-[#3f3f46] py-1 rounded text-xs transition text-center">Invert</button>
+                    </div>
+                    <div class="flex items-center justify-between gap-2 mt-1"><label class="text-xs">Brightness</label><input type="range" id="b-range" min="-100" max="100" value="0" class="flex-1 accent-[#007acc] cursor-pointer"></div>
+                    <div class="flex items-center justify-between gap-2"><label class="text-xs">Contrast</label><input type="range" id="c-range" min="-100" max="100" value="0" class="flex-1 accent-[#007acc] cursor-pointer"></div>
+                    <button id="apply-tone" class="bg-[#333333] hover:bg-[#3a3d41] text-white border border-[#3f3f46] py-1 rounded text-xs transition text-center mt-1">Commit Tones</button>
+                `;
+                this.propertiesPanel.appendChild(filterSection);
+
+                // Zoom Navigator Panel
+                const zoomSection = document.createElement('div');
+                zoomSection.className = 'bg-[#333333] rounded-md p-2.5 flex flex-col gap-2';
+                zoomSection.innerHTML = `
+                    <div class="font-bold text-white text-[11px] uppercase tracking-wider border-b border-[#3f3f46] pb-1">Zoom Navigator</div>
+                    <div class="flex items-center justify-between gap-2">
+                        <button id="zoom-out" class="flex-1 bg-[#333333] hover:bg-[#3a3d41] text-white border border-[#3f3f46] py-1 rounded text-xs transition">-</button>
+                        <span id="zoom-val" class="w-[50px] text-center text-xs">100%</span>
+                        <button id="zoom-in" class="flex-1 bg-[#333333] hover:bg-[#3a3d41] text-white border border-[#3f3f46] py-1 rounded text-xs transition">+</button>
+                    </div>
+                `;
+                this.propertiesPanel.appendChild(zoomSection);
+
+                // Canvas Info Panel
+                const infoSection = document.createElement('div');
+                infoSection.className = 'bg-[#333333] rounded-md p-2.5 flex flex-col gap-2';
+                infoSection.innerHTML = `
+                    <div class="font-bold text-white text-[11px] uppercase tracking-wider border-b border-[#3f3f46] pb-1">Canvas Info</div>
+                    <div class="flex items-center justify-between text-[11px] text-[#888]">
+                        <span>Resolution:</span>
+                    </div>
+                `;
+                infoSection.querySelector('.flex').appendChild(this.dimensionsLabel);
+                this.propertiesPanel.appendChild(infoSection);
+
+                // Bind Global Actions
+                document.getElementById('filter-grayscale').onclick = () => {
+                    const imgData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                    const data = imgData.data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        const avg = 0.3 * data[i] + 0.59 * data[i + 1] + 0.11 * data[i + 2];
+                        data[i] = avg; data[i + 1] = avg; data[i + 2] = avg;
+                    }
+                    this.ctx.putImageData(imgData, 0, 0);
+                    this.updateSnapshot();
+                };
+
+                document.getElementById('filter-invert').onclick = () => {
+                    const imgData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                    const data = imgData.data;
+                    for (let i = 0; i < data.length; i += 4) {
+                        data[i] = 255 - data[i];
+                        data[i + 1] = 255 - data[i + 1];
+                        data[i + 2] = 255 - data[i + 2];
+                    }
+                    this.ctx.putImageData(imgData, 0, 0);
+                    this.updateSnapshot();
+                };
+
+                document.getElementById('apply-tone').onclick = () => {
+                    const b = parseInt(document.getElementById('b-range').value);
+                    const c = parseInt(document.getElementById('c-range').value);
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.drawImage(this.loadedImage, 0, 0);
+
+                    const imgData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                    const data = imgData.data;
+                    const factor = (259 * (c + 255)) / (255 * (259 - c));
+
+                    for (let i = 0; i < data.length; i += 4) {
+                        for (let j = 0; j < 3; j++) {
+                            let val = data[i + j] + b;
+                            val = factor * (val - 128) + 128;
+                            data[i + j] = Math.min(255, Math.max(0, val));
+                        }
+                    }
+                    this.ctx.putImageData(imgData, 0, 0);
+                    this.updateSnapshot();
+                };
+
+                document.getElementById('zoom-in').onclick = () => {
+                    if (this.zoomLevel < 3) { this.zoomLevel += 0.25; this.applyZoom(); }
+                };
+                document.getElementById('zoom-out').onclick = () => {
+                    if (this.zoomLevel > 0.5) { this.zoomLevel -= 0.25; this.applyZoom(); }
+                };
+            }
+
+            applyZoom() {
+                this.canvasContainer.style.transform = `scale(${this.zoomLevel})`;
+                document.getElementById('zoom-val').textContent = Math.round(this.zoomLevel * 100) + '%';
+                if (this.activePlugin && this.activePlugin.updateCursor) this.activePlugin.updateCursor();
+            }
+
+            bindGlobalEvents() {
+                document.getElementById('upload-input').addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            const img = new Image();
+                            img.src = event.target.result;
+                            img.onload = () => {
+                                this.loadedImage = img;
+                                this.resetCanvasToImage(img);
+                            };
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+
+                document.getElementById('save-btn').addEventListener('click', () => {
+                    const link = document.createElement('a');
+                    link.download = 'edited-image.jpg';
+                    link.href = this.canvas.toDataURL('image/jpeg', 0.9);
+                    link.click();
+                });
+            }
+        }
+
+        // --- INITIALIZE MAINBOARD & MOUNT PLUGINS ---
+        const app = new ImageEditor();
+        app.registerPlugin('brush', new BrushPlugin(), true);
+        app.registerPlugin('eraser', new EraserPlugin());
+        app.registerPlugin('eyedropper', new EyedropperPlugin());
+        app.registerPlugin('rectangle', new RectanglePlugin());
+        app.registerPlugin('text', new TextPlugin());
+        app.registerPlugin('blur', new BlurPlugin());
+        app.registerPlugin('crop', new CropPlugin());
+    </script>
+</body>
+</html>
