@@ -154,6 +154,9 @@ class Image:
         display(self.image)
         return self
 
+    def toPil(self):
+        return self.image
+
     def save(self, output_path: str) -> None:
         """Save the processed image to disk."""
         try:
