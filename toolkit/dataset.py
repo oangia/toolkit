@@ -38,19 +38,22 @@ class BaseImageDataset(Dataset):
     def _out(self, t_inp, t_tgt):
         return torch.clamp((t_tgt * 0.5) + 0.5, 0, 1).permute(1, 2, 0).numpy()
         
-    def show_sample(self, idx):
-        t_inp, t_tgt = self[idx]
+    def show_sample(self, limit=None):
+        total = len(self)
+        num_to_show = total if limit is None else min(total, limit)
+        for idx in range(num_to_show):
+            t_inp, t_tgt = self[idx]
 
-        fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-        axes[0].imshow(self._inp(t_inp))
-        axes[0].set_title("Input")
-        axes[0].axis('off')
+            fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+            axes[0].imshow(self._inp(t_inp))
+            axes[0].set_title(f"Input [{idx}]")
+            axes[0].axis('off')
 
-        axes[1].imshow(self._out(t_inp, t_tgt) )
-        axes[1].set_title("Target")
-        axes[1].axis('off')
+            axes[1].imshow(self._out(t_inp, t_tgt))
+            axes[1].set_title(f"Target [{idx}]")
+            axes[1].axis('off')
 
-        plt.show()
+            plt.show()
         
 class MultiPairDataset(BaseImageDataset):
     def __init__(self, inp_paths, tgt_paths, augment=False, input_size=256):
