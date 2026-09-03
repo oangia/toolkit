@@ -35,7 +35,7 @@ class MultiPairDataset(inn.BaseImageDataset):
                 self.targets.append(t_tgt)
 
 class ImageEnhanceDataset(inn.BaseImageDataset):
-    def __init__(self, tgt_paths, input_size=256, scale_factor=8):
+    def __init__(self, data_dir, input_size=256, scale_factor=8):
         super().__init__(augment=False)
         self.inputs = []
         self.targets = []
@@ -45,7 +45,14 @@ class ImageEnhanceDataset(inn.BaseImageDataset):
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
-        for path in tgt_paths:
+        valid_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.webp')
+        paths = [
+            os.path.join(data_dir, f) 
+            for f in sorted(os.listdir(data_dir)) 
+            if f.lower().endswith(valid_extensions)
+        ]
+
+        for path in paths:
             chunks = Image(path).slice_image(input_size)
             for chunk in chunks:
                 t_tgt = transform(chunk)
