@@ -2,6 +2,7 @@ import os
 import random
 import torch
 import cv2
+import numpy as np
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
