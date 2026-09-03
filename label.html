@@ -2,65 +2,124 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>YOLO Labeler - Pro Workspace</title>
+    <title>Labeler - Pro Workspace</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-[#1e1e1e] text-[#cccccc] font-sans min-h-screen flex flex-col items-center justify-center p-4 select-none">
+<body class="bg-[#1e1e1e] text-[#cccccc] font-sans h-screen flex flex-col select-none overflow-hidden">
 
-    <!-- Photoshop-style Application Window -->
-    <div class="bg-[#252526] border border-[#333333] rounded-lg shadow-2xl p-6 w-full max-w-xl flex flex-col items-center">
-        
-        <!-- Top Toolbar / Header -->
-        <div class="w-full flex items-center justify-between pb-4 mb-4 border-b border-[#3f3f46]">
-            <div class="flex items-center space-x-2">
-                <span class="w-3 h-3 rounded-full bg-[#ff5f56] inline-block"></span>
-                <span class="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block"></span>
-                <span class="w-3 h-3 rounded-full bg-[#27c93f] inline-block"></span>
-                <span class="text-xs font-semibold text-[#969696] uppercase tracking-wider ml-2">YOLO Annotation Tool</span>
-            </div>
-            <label class="cursor-pointer bg-[#0e639c] hover:bg-[#1177bb] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors shadow">
-                Open Image
+    <!-- Top Menu Bar -->
+    <header class="bg-[#2d2d2d] border-b border-[#3f3f46] h-9 flex items-center px-4 justify-between text-xs">
+        <div class="flex items-center space-x-4">
+            <span class="font-bold text-[#ffffff] flex items-center gap-2"><i class="fa-solid fa-layer-group text-[#007acc]"></i> YOLO Studio Pro</span>
+            <span class="text-[#969696] hover:text-white cursor-pointer">File</span>
+            <span class="text-[#969696] hover:text-white cursor-pointer">Edit</span>
+            <span class="text-[#969696] hover:text-white cursor-pointer">View</span>
+            <span class="text-[#969696] hover:text-white cursor-pointer">Window</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <label class="cursor-pointer bg-[#0e639c] hover:bg-[#1177bb] text-white px-3 py-1 rounded transition-colors shadow">
+                <i class="fa-solid fa-folder-open mr-1"></i> Open Image
                 <input type="file" id="upload" accept="image/*" class="hidden">
             </label>
         </div>
+    </header>
 
-        <!-- Canvas Workspace -->
-        <div class="relative bg-[#1e1e1e] p-2 rounded border border-[#3f3f46] shadow-inner">
-            <canvas id="canvas" width="512" height="512" class="cursor-crosshair block rounded"></canvas>
-        </div>
+    <!-- Main Workspace Layout -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Left Toolbar (Photoshop Style Vertical Strip) -->
+        <aside class="w-12 bg-[#262626] border-r border-[#3f3f46] flex flex-col items-center py-3 space-y-3">
+            <button title="Bounding Box Tool (B)" class="w-8 h-8 rounded bg-[#007acc] text-white flex items-center justify-center shadow"><i class="fa-solid fa-vector-square text-xs"></i></button>
+            <button title="Hand Tool (H)" class="w-8 h-8 rounded hover:bg-[#383838] text-[#969696] hover:text-white flex items-center justify-center transition-colors"><i class="fa-solid fa-hand text-xs"></i></button>
+            <button title="Zoom Tool (Z)" class="w-8 h-8 rounded hover:bg-[#383838] text-[#969696] hover:text-white flex items-center justify-center transition-colors"><i class="fa-solid fa-magnifying-glass text-xs"></i></button>
+        </aside>
 
-        <!-- Properties / Status Panel -->
-        <div class="w-full mt-4 flex flex-col space-y-3">
-            <div class="flex items-center justify-between bg-[#1e1e1e] border border-[#3f3f46] rounded px-3 py-2 text-xs font-mono text-[#4ec9b0]">
-                <span id="output" class="truncate">Draw a bounding box on the image...</span>
+        <!-- Center Canvas Viewport -->
+        <main class="flex-1 bg-[#383838] flex items-center justify-center relative overflow-hidden p-6">
+            <!-- Canvas Wrapper with drop shadow -->
+            <div class="bg-[#1e1e1e] p-2 rounded-sm border border-[#4f4f4f] shadow-2xl relative">
+                <canvas id="canvas" width="512" height="512" class="cursor-crosshair block bg-[#1e1e1e]"></canvas>
             </div>
+            <!-- Canvas Info Overlay -->
+            <div class="absolute bottom-4 left-4 bg-[#252526]/80 backdrop-blur border border-[#3f3f46] px-3 py-1 rounded text-[11px] font-mono text-[#969696]">
+                Dimensions: 512 x 512 px | Mode: RGB
+            </div>
+        </main>
+
+        <!-- Right Side Panels (Properties & Annotations) -->
+        <aside class="w-72 bg-[#252526] border-l border-[#3f3f46] flex flex-col">
             
-            <button id="downloadBtn" style="display:none;" class="w-full bg-[#0e639c] hover:bg-[#1177bb] text-white text-sm font-semibold py-2 rounded transition-colors shadow-md">
-                Export Label (.lbl)
-            </button>
-        </div>
+            <!-- Panel Header -->
+            <div class="bg-[#2d2d2d] px-3 py-2 border-b border-[#3f3f46] text-xs font-semibold uppercase tracking-wider text-[#bbbbbb] flex justify-between items-center">
+                <span>Annotations (YOLO)</span>
+                <span id="boxCount" class="text-[#007acc] font-mono">0 boxes</span>
+            </div>
+
+            <!-- Labels List Container -->
+            <div id="labelsList" class="flex-1 overflow-y-auto p-2 space-y-2 text-xs font-mono">
+                <div class="text-center text-[#777777] py-10">No bounding boxes drawn yet.<br>Click and drag on canvas.</div>
+            </div>
+
+            <!-- Panel Footer / Export Action -->
+            <div class="p-3 bg-[#2d2d2d] border-t border-[#3f3f46] flex flex-col gap-2">
+                <div class="flex items-center justify-between text-xs text-[#969696]">
+                    <span>Class ID:</span>
+                    <input type="number" id="classId" value="0" min="0" class="w-16 bg-[#1e1e1e] border border-[#3f3f46] rounded text-center text-white py-0.5">
+                </div>
+                <button id="downloadBtn" disabled class="w-full bg-[#333333] text-[#777777] font-semibold py-2 rounded text-xs transition-colors cursor-not-allowed">
+                    <i class="fa-solid fa-download mr-1"></i> Export Label File (.txt)
+                </button>
+            </div>
+        </aside>
     </div>
 
+    <!-- Script Logic -->
     <script>
         const upload = document.getElementById('upload');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const output = document.getElementById('output');
+        const labelsList = document.getElementById('labelsList');
         const downloadBtn = document.getElementById('downloadBtn');
+        const boxCount = document.getElementById('boxCount');
+        const classIdInput = document.getElementById('classId');
         
         let img = new Image();
         let imageName = "image";
         let isDrawing = false;
         let startX, startY, endX, endY;
-        let lastYoloText = "";
+        let boxes = [];
 
-        // Initial blank canvas state
-        ctx.fillStyle = '#1e1e1e';
-        ctx.fillRect(0, 0, 512, 512);
-        ctx.fillStyle = '#666666';
-        ctx.font = '14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('No image loaded', 256, 256);
+        // Initial empty canvas render
+        function drawCanvas() {
+            ctx.fillStyle = '#1e1e1e';
+            ctx.fillRect(0, 0, 512, 512);
+            if (img.src) {
+                ctx.drawImage(img, 0, 0, 512, 512);
+            } else {
+                ctx.fillStyle = '#555555';
+                ctx.font = '13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('No image loaded', 256, 256);
+            }
+
+            // Draw all stored boxes
+            boxes.forEach((box, idx) => {
+                ctx.strokeStyle = '#007acc';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(box.x1, box.y1, box.w, box.h);
+                ctx.fillStyle = 'rgba(0, 122, 204, 0.2)';
+                ctx.fillRect(box.x1, box.y1, box.w, box.h);
+
+                // Label tag on canvas
+                ctx.fillStyle = '#007acc';
+                ctx.fillRect(box.x1, box.y1 - 16, 35, 16);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '10px monospace';
+                ctx.fillText(`#${idx} (${box.classId})`, box.x1 + 4, box.y1 - 4);
+            });
+        }
+        drawCanvas();
 
         upload.addEventListener('change', (e) => {
             const file = e.target.files[0];
@@ -74,10 +133,9 @@
         });
 
         img.onload = () => {
-            ctx.clearRect(0, 0, 512, 512);
-            ctx.drawImage(img, 0, 0, 512, 512);
-            downloadBtn.style.display = 'none';
-            output.innerText = "Image loaded. Click and drag to draw a bounding box.";
+            boxes = [];
+            updateUI();
+            drawCanvas();
         };
 
         canvas.addEventListener('mousedown', (e) => {
@@ -98,19 +156,22 @@
             endX = (e.clientX - rect.left) * scaleX;
             endY = (e.clientY - rect.top) * scaleY;
             
-            ctx.clearRect(0, 0, 512, 512);
-            ctx.drawImage(img, 0, 0, 512, 512);
+            drawCanvas();
             
-            // Photoshop-style selection border (Cyan/Blue tint)
-            ctx.strokeStyle = '#007acc';
+            // Current live preview rectangle
+            const curX = Math.min(startX, endX);
+            const curY = Math.min(startY, endY);
+            const curW = Math.abs(endX - startX);
+            const curH = Math.abs(endY - startY);
+
+            ctx.strokeStyle = '#38ef7d';
             ctx.lineWidth = 2;
-            ctx.strokeRect(startX, startY, endX - startX, endY - startY);
-            
-            ctx.fillStyle = 'rgba(0, 122, 204, 0.15)';
-            ctx.fillRect(startX, startY, endX - startX, endY - startY);
+            ctx.strokeRect(curX, curY, curW, curH);
+            ctx.fillStyle = 'rgba(56, 239, 125, 0.1)';
+            ctx.fillRect(curX, curY, curW, curH);
         });
 
-        canvas.addEventListener('mouseup', (e) => {
+        canvas.addEventListener('mouseup', () => {
             if (!isDrawing) return;
             isDrawing = false;
             const x1 = Math.min(startX, endX);
@@ -118,24 +179,67 @@
             const w = Math.abs(endX - startX);
             const h = Math.abs(endY - startY);
             
-            if (w < 2 || h < 2) return; // Prevent accidental micro-clicks
+            if (w < 4 || h < 4) return; // Ignore accidental clicks
 
             const cx = (x1 + w / 2) / 512;
             const cy = (y1 + h / 2) / 512;
             const normW = w / 512;
             const normH = h / 512;
-            
-            lastYoloText = `0 ${cx.toFixed(4)} ${cy.toFixed(4)} ${normW.toFixed(4)} ${normH.toFixed(4)}`;
-            output.innerText = lastYoloText;
-            downloadBtn.style.display = 'block';
+            const cid = parseInt(classIdInput.value) || 0;
+
+            boxes.push({
+                x1, y1, w, h,
+                classId: cid,
+                yoloStr: `${cid} ${cx.toFixed(4)} ${cy.toFixed(4)} ${normW.toFixed(4)} ${normH.toFixed(4)}`
+            });
+
+            updateUI();
+            drawCanvas();
         });
 
+        function updateUI() {
+            boxCount.innerText = `${boxes.length} box${boxes.length === 1 ? '' : 'es'}`;
+            if (boxes.length > 0) {
+                downloadBtn.disabled = false;
+                downloadBtn.className = "w-full bg-[#0e639c] hover:bg-[#1177bb] text-white font-semibold py-2 rounded text-xs transition-colors shadow cursor-pointer";
+            } else {
+                downloadBtn.disabled = true;
+                downloadBtn.className = "w-full bg-[#333333] text-[#777777] font-semibold py-2 rounded text-xs cursor-not-allowed";
+            }
+
+            if (boxes.length === 0) {
+                labelsList.innerHTML = `<div class="text-center text-[#777777] py-10">No bounding boxes drawn yet.<br>Click and drag on canvas.</div>`;
+                return;
+            }
+
+            labelsList.innerHTML = '';
+            boxes.forEach((box, idx) => {
+                const item = document.createElement('div');
+                item.className = "bg-[#1e1e1e] border border-[#3f3f46] p-2 rounded flex items-center justify-between group";
+                item.innerHTML = `
+                    <div class="truncate text-[11px] text-[#4ec9b0]">
+                        <span class="text-[#969696]">#${idx}</span> ${box.yoloStr}
+                    </div>
+                    <button onclick="removeBox(${idx})" class="text-[#888] hover:text-[#ff5f56] px-1 transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
+                `;
+                labelsList.appendChild(item);
+            });
+        }
+
+        window.removeBox = function(idx) {
+            boxes.splice(idx, 1);
+            updateUI();
+            drawCanvas();
+        }
+
         downloadBtn.addEventListener('click', () => {
-            const blob = new Blob([lastYoloText], { type: 'text/plain' });
+            if (boxes.length === 0) return;
+            const fileContent = boxes.map(b => b.yoloStr).join('\n');
+            const blob = new Blob([fileContent], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `${imageName}.lbl`;
+            link.download = `${imageName}.txt`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
