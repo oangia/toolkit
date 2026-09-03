@@ -7,9 +7,9 @@ from toolkit import Image
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
-from toolkit.base.Dataset import BaseImageDataset
+import toolkit.nn as inn
         
-class MultiPairDataset(BaseImageDataset):
+class MultiPairDataset(inn.BaseImageDataset):
     def __init__(self, inp_paths, tgt_paths, augment=False, input_size=256):
         super().__init__(augment=augment)
         self.inputs = []
@@ -34,7 +34,7 @@ class MultiPairDataset(BaseImageDataset):
                 self.inputs.append(t_inp)
                 self.targets.append(t_tgt)
 
-class ImageEnhanceDataset(BaseImageDataset):
+class ImageEnhanceDataset(inn.BaseImageDataset):
     def __init__(self, tgt_paths, input_size=256, scale_factor=8):
         super().__init__(augment=False)
         self.inputs = []
@@ -69,7 +69,7 @@ class ImageEnhanceDataset(BaseImageDataset):
                 self.inputs.append(t_inp)
                 self.targets.append(t_tgt)
 
-class ImageDataset(BaseImageDataset):
+class ImageDataset(inn.BaseImageDataset):
     def __init__(self, folder_path, input_files, target_files, length=None, augment=False, input_size=256):
         super().__init__(augment=augment)
         self.inputs = []
@@ -103,7 +103,7 @@ class ImageDataset(BaseImageDataset):
                 self.inputs.append(t_inp)
                 self.targets.append(t_tgt)
 
-class YOLODataset(BaseImageDataset):
+class YOLODataset(inn.BaseImageDataset):
     def __init__(self, data_dir, img_size=256, augment=True):
         super().__init__(augment=augment)
         self.image_dir = os.path.join(data_dir, 'images')
