@@ -229,12 +229,22 @@ class YOLODataset(inn.BaseImageDataset):
         img = (self._inp(t_inp) * 255).astype(np.uint8).copy()
         
         grids = [
-            (target_small, 32),
-            (target_medium, 16),
-            (target_large, 8)
+            (target_small, 32, (255, 0, 0)),    # Small scale grid (Blue lines)
+            (target_medium, 16, (0, 255, 255)), # Medium scale grid (Yellow lines)
+            (target_large, 8, (255, 0, 255))    # Large scale grid (Magenta lines)
         ]
         
-        for grid, S in grids:
+        # 1. Draw grid cell lines over the image to visualize structural resolution
+        for _, S, color in grids:
+            cell_size = self.img_size // S
+            for i in range(1, S):
+                pt = i * cell_size
+                # Draw faint grid lines
+                cv2.line(img, (pt, 0), (pt, self.img_size), color, 1)
+                cv2.line(img, (0, pt), (self.img_size, pt), color, 1)
+
+        # 2. Draw object bounding boxes mapped to the feature grid
+        for grid, S, _ in grids:
             for gy in range(S):
                 for gx in range(S):
                     if grid[gy, gx, 0] > 0:
