@@ -33,6 +33,7 @@ class BaseImageDataset(Dataset):
         
 class MultiPairDataset(BaseImageDataset):
     def __init__(self, inp_paths, tgt_paths, augment=False, input_size=256):
+        super().__init__(augment=augment)
         self.inputs = []
         self.targets = []
         self.augment = augment
@@ -57,6 +58,7 @@ class MultiPairDataset(BaseImageDataset):
 
 class ImageEnhanceDataset(BaseImageDataset):
     def __init__(self, tgt_paths, input_size=256, scale_factor=8):
+        super().__init__(augment=False)
         self.inputs = []
         self.targets = []
         
@@ -91,6 +93,7 @@ class ImageEnhanceDataset(BaseImageDataset):
 
 class ImageDataset(BaseImageDataset):
     def __init__(self, folder_path, input_files, target_files, length=None, augment=False, input_size=256):
+        super().__init__(augment=augment)
         self.inputs = []
         self.targets = []
         self.augment = augment
