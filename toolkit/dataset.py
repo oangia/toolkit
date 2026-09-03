@@ -4,59 +4,10 @@ import torch
 import cv2
 import numpy as np
 from toolkit import Image
-from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
-
-class BaseImageDataset(Dataset):
-    def __init__(self, inputs = None, targets = None, augment=False):
-        self.augment = augment
-
-    def __len__(self):
-        return len(self.inputs)
-
-    def _augmentations(self, t_inp, t_tgt):
-        if self.augment:
-            if random.random() > 0.5:
-                t_inp = TF.hflip(t_inp)
-                t_tgt = TF.hflip(t_tgt)
-            if random.random() > 0.5:
-                t_inp = TF.vflip(t_inp)
-                t_tgt = TF.vflip(t_tgt)
-            rot_angle = random.choice([0, 30, 60, 90, 120, 150, 180, 210, 240, 270])
-            if rot_angle > 0:
-                t_inp = TF.rotate(t_inp, rot_angle)
-                t_tgt = TF.rotate(t_tgt, rot_angle)
-        return t_inp, t_tgt
-
-    def __getitem__(self, idx):
-        t_inp = self.inputs[idx]
-        t_tgt = self.targets[idx]
-        return self._augmentations(t_inp, t_tgt)
-
-    def _inp(self, t_inp):
-        return torch.clamp((t_inp * 0.5) + 0.5, 0, 1).permute(1, 2, 0).numpy()
-        
-    def _out(self, t_inp, t_tgt):
-        return torch.clamp((t_tgt * 0.5) + 0.5, 0, 1).permute(1, 2, 0).numpy()
-        
-    def show_sample(self, limit=None):
-        total = len(self)
-        num_to_show = total if limit is None else min(total, limit)
-        for idx in range(num_to_show):
-            t_inp, t_tgt = self[idx]
-
-            fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-            axes[0].imshow(self._inp(t_inp))
-            axes[0].set_title(f"Input [{idx}]")
-            axes[0].axis('off')
-
-            axes[1].imshow(self._out(t_inp, t_tgt))
-            axes[1].set_title(f"Target [{idx}]")
-            axes[1].axis('off')
-
-            plt.show()
+from toolkit.base.Dataset import BaseImageDataset
         
 class MultiPairDataset(BaseImageDataset):
     def __init__(self, inp_paths, tgt_paths, augment=False, input_size=256):
@@ -181,13 +132,12 @@ class YOLODataset(BaseImageDataset):
             [xmin, ymax, 1]
         ])
 
-        if flip_h:
-            corners[:, 0] = img_w - corners[:, 0]
-
-        center = (img_w / 2, img_h / 2)
+        center = (img_w / 2.0, img_h / 2.0)
         M = cv2.getRotationMatrix2D(center, angle, 1.0)
-
         transformed_corners = np.dot(M, corners.T).T
+
+        if flip_h:
+            transformed_corners[:, 0] = img_w - transformed_corners[:, 0]
 
         new_xmin = np.clip(np.min(transformed_corners[:, 0]), 0, img_w)
         new_xmax = np.clip(np.max(transformed_corners[:, 0]), 0, img_w)
@@ -197,10 +147,13 @@ class YOLODataset(BaseImageDataset):
         if new_xmax <= new_xmin or new_ymax <= new_ymin:
             return None
 
-        new_cx = ((new_xmin + new_xmax) / 2) / img_w
-        new_cy = ((new_ymin + new_ymax) / 2) / img_h
+        new_cx = ((new_xmin + new_xmax) / 2.0) / img_w
+        new_cy = ((new_ymin + new_ymax) / 2.0) / img_h
         new_w = (new_xmax - new_xmin) / img_w
         new_h = (new_ymax - new_ymin) / img_h
+
+        if new_w <= 0 or new_h <= 0:
+            return None
 
         return new_cx, new_cy, new_w, new_h
 
@@ -219,9 +172,8 @@ class YOLODataset(BaseImageDataset):
             angle = float(random.choice(angle_steps))
             flip_h = random.choice([True, False])
 
-            center = (self.img_size / 2, self.img_size / 2)
+            center = (self.img_size / 2.0, self.img_size / 2.0)
             M = cv2.getRotationMatrix2D(center, angle, 1.0)
-
             image = cv2.warpAffine(image, M, (self.img_size, self.img_size),
                                    borderMode=cv2.BORDER_REFLECT_101)
 
@@ -230,6 +182,9 @@ class YOLODataset(BaseImageDataset):
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         image = torch.from_numpy(image).float().permute(2, 0, 1) / 255.0
+        
+        # Scale inputs to [-1, 1] range
+        image = image * 2.0 - 1.0
 
         target_small = torch.zeros(32, 32, 5)
         target_medium = torch.zeros(16, 16, 5)
@@ -263,15 +218,30 @@ class YOLODataset(BaseImageDataset):
         return image, (target_small, target_medium, target_large)
 
     def _out(self, t_inp, t_tgt):
+        target_small, target_medium, target_large = t_tgt
         img = (self._inp(t_inp) * 255).astype(np.uint8).copy()
         
-        for box in t_tgt:
-            cls_id, cx, cy, w, h = box.tolist()
-            xmin = int((cx - w / 2) * self.img_size)
-            xmax = int((cx + w / 2) * self.img_size)
-            ymin = int((cy - h / 2) * self.img_size)
-            ymax = int((cy + h / 2) * self.img_size)
-            
-            cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-            
+        grids = [
+            (target_small, 32),
+            (target_medium, 16),
+            (target_large, 8)
+        ]
+        
+        for grid, S in grids:
+            for gy in range(S):
+                for gx in range(S):
+                    if grid[gy, gx, 0] > 0:
+                        cell_data = grid[gy, gx].tolist()
+                        _, tx, ty, w, h = cell_data
+                        
+                        cx = (gx + tx) / S
+                        cy = (gy + ty) / S
+                        
+                        xmin = int((cx - w / 2) * self.img_size)
+                        xmax = int((cx + w / 2) * self.img_size)
+                        ymin = int((cy - h / 2) * self.img_size)
+                        ymax = int((cy + h / 2) * self.img_size)
+                        
+                        cv2.rectangle(img, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+                        
         return img.astype(np.float32) / 255.0
