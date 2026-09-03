@@ -6,7 +6,7 @@ import torchvision.transforms.functional as TF
 from toolkit import Image
 
 class BaseImageDataset(Dataset):
-    def __init__(self, inputs, targets, augment=False):
+    def __init__(self, inputs = None, targets = None, augment=False):
         self.augment = augment
 
     def __len__(self):
