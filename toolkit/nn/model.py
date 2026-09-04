@@ -13,6 +13,8 @@ class Model:
         if os.path.exists(self.save_path):
             print(f"-> Found existing checkpoint at '{self.save_path}'. Loading generator...")
             self.model_state = torch.load(self.save_path, map_location=self.device)
+            if self.model_state is not None:
+                self.model.load_state_dict(self.model_state)
         else:
             print("-> Starting generator training from scratch.")
 
