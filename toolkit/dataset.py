@@ -53,27 +53,29 @@ class ImageEnhanceDataset(inn.BaseImageDataset):
         for path in paths:
             chunks = Image(path).slice_image(input_size)
             for chunk in chunks:
+                # 0. Ensure image is 3-channel RGB (handles RGBA PNGs and Grayscale)
+                if hasattr(chunk, "convert"):
+                    chunk = chunk.convert("RGB")
+
                 # 1. Convert to tensor in [0, 1] range first
                 t_tgt_raw = to_tensor(chunk)
                 _, h, w = t_tgt_raw.shape
-                
+
                 # 2. Downsize using nearest-neighbor (no averaging/blur)
                 low = torch.nn.functional.interpolate(
-                    t_tgt_raw.unsqueeze(0), 
-                    size=(h // scale_factor, w // scale_factor), 
-                    mode='nearest'
+                    t_tgt_raw.unsqueeze(0),
+                    size=(h // scale_factor, w // scale_factor),
+                    mode="nearest",
                 )
 
                 # 3. Upscale using nearest-neighbor (duplicates pixels)
                 t_inp_raw = torch.nn.functional.interpolate(
-                    low, 
-                    size=(h, w), 
-                    mode='nearest'
+                    low, size=(h, w), mode="nearest"
                 ).squeeze(0)
 
                 # 3. Clamp input to prevent bicubic overshooting artifacts
                 t_inp_raw = torch.clamp(t_inp_raw, 0.0, 1.0)
-                
+
                 # 4. Normalize both to [-1, 1] for the model
                 self.targets.append(normalize(t_tgt_raw))
                 self.inputs.append(normalize(t_inp_raw))
