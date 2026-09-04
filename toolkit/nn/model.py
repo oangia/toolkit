@@ -7,7 +7,7 @@ class Model:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     def save_model(self, state_dict):
-        torch.save(state_dict, self.backup_path)
+        torch.save(state_dict, self.save_path)
 
     def load_model(self):
         if os.path.exists(self.save_path):
