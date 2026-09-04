@@ -2,9 +2,8 @@ import io
 import base64
 import requests
 from io import BytesIO
-from PIL import Image as PILImage, ImageOps
+from PIL import Image as PILImage, ImageOps, ImageFilter
 from IPython.display import display, HTML
-from PIL import ImageFilter
 import numpy as np
 
 class Image:
