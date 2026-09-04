@@ -57,18 +57,18 @@ class ImageEnhanceDataset(inn.BaseImageDataset):
                 t_tgt_raw = to_tensor(chunk)
                 _, h, w = t_tgt_raw.shape
                 
-                # 2. Downsize then upscale in [0, 1] space
+                # 2. Downsize using nearest-neighbor (no averaging/blur)
                 low = torch.nn.functional.interpolate(
                     t_tgt_raw.unsqueeze(0), 
                     size=(h // scale_factor, w // scale_factor), 
-                    mode='area'
+                    mode='nearest'
                 )
 
+                # 3. Upscale using nearest-neighbor (duplicates pixels)
                 t_inp_raw = torch.nn.functional.interpolate(
                     low, 
                     size=(h, w), 
-                    mode='bicubic', 
-                    align_corners=False
+                    mode='nearest'
                 ).squeeze(0)
 
                 # 3. Clamp input to prevent bicubic overshooting artifacts
