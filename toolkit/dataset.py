@@ -40,10 +40,8 @@ class ImageEnhanceDataset(inn.BaseImageDataset):
         self.inputs = []
         self.targets = []
         
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-        ])
+        to_tensor = transforms.ToTensor()
+        normalize = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 
         valid_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.webp')
         paths = [
@@ -55,26 +53,30 @@ class ImageEnhanceDataset(inn.BaseImageDataset):
         for path in paths:
             chunks = Image(path).slice_image(input_size)
             for chunk in chunks:
-                t_tgt = transform(chunk)
-                _, h, w = t_tgt.shape
+                # 1. Convert to tensor in [0, 1] range first
+                t_tgt_raw = to_tensor(chunk)
+                _, h, w = t_tgt_raw.shape
                 
-                # Downsize then upscale back to create input
+                # 2. Downsize then upscale in [0, 1] space
                 low = torch.nn.functional.interpolate(
-                    t_tgt.unsqueeze(0), 
+                    t_tgt_raw.unsqueeze(0), 
                     size=(h // scale_factor, w // scale_factor), 
                     mode='area'
                 )
 
-                # Upscale back to original size using 'bicubic' for smooth expansion
-                t_inp = torch.nn.functional.interpolate(
+                t_inp_raw = torch.nn.functional.interpolate(
                     low, 
                     size=(h, w), 
                     mode='bicubic', 
                     align_corners=False
                 ).squeeze(0)
 
-                self.inputs.append(t_inp)
-                self.targets.append(t_tgt)
+                # 3. Clamp input to prevent bicubic overshooting artifacts
+                t_inp_raw = torch.clamp(t_inp_raw, 0.0, 1.0)
+                
+                # 4. Normalize both to [-1, 1] for the model
+                self.targets.append(normalize(t_tgt_raw))
+                self.inputs.append(normalize(t_inp_raw))
 
 class ImageDataset(inn.BaseImageDataset):
     def __init__(self, folder_path, input_files, target_files, length=None, augment=False, input_size=256):
