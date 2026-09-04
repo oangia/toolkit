@@ -12,6 +12,10 @@ import matplotlib.pyplot as plt
 class BaseImageDataset(Dataset):
     def __init__(self, inputs = None, targets = None, augment=False):
         self.augment = augment
+        self.normalize = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # Scales [0, 1] to [-1, 1]
+        ])
 
     def __len__(self):
         return len(self.inputs)
