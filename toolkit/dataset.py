@@ -37,48 +37,45 @@ class MultiPairDataset(inn.BaseImageDataset):
 class ImageEnhanceDataset(inn.BaseImageDataset):
     def __init__(self, data_dir, input_size=256, scale_factor=8):
         super().__init__(augment=False)
-        self.inputs = []
-        self.targets = []
+        self.input_size = input_size
+        self.scale_factor = scale_factor
+        self.to_tensor = transforms.ToTensor()
+        self.normalize = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         
-        to_tensor = transforms.ToTensor()
-        normalize = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-
-        valid_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.webp')
-        paths = [
+        self.paths = [
             os.path.join(data_dir, f) 
             for f in sorted(os.listdir(data_dir)) 
-            if f.lower().endswith(valid_extensions)
+            if f.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.webp'))
         ]
+        
+    def __len__(self):
+        return len(self.paths)
 
-        for path in paths:
-            chunks = Image(path).slice_image(input_size)
-            for chunk in chunks:
-                # 0. Ensure image is 3-channel RGB (handles RGBA PNGs and Grayscale)
-                if hasattr(chunk, "convert"):
-                    chunk = chunk.convert("RGB")
+    def __getitem__(self, idx):
+        chunks = Image(self.paths[idx]).slice_image(self.input_size)
+        chunk = random.choice(chunks)
 
-                # 1. Convert to tensor in [0, 1] range first
-                t_tgt_raw = to_tensor(chunk)
-                _, h, w = t_tgt_raw.shape
+        if hasattr(chunk, "convert"):
+            chunk = chunk.convert("RGB")
 
-                # 2. Downsize using nearest-neighbor (no averaging/blur)
-                low = torch.nn.functional.interpolate(
-                    t_tgt_raw.unsqueeze(0),
-                    size=(h // scale_factor, w // scale_factor),
-                    mode="nearest",
-                )
+        t_tgt_raw = self.to_tensor(chunk)
+        _, h, w = t_tgt_raw.shape
 
-                # 3. Upscale using nearest-neighbor (duplicates pixels)
-                t_inp_raw = torch.nn.functional.interpolate(
-                    low, size=(h, w), mode="nearest"
-                ).squeeze(0)
+        low = torch.nn.functional.interpolate(
+            t_tgt_raw.unsqueeze(0),
+            size=(h // self.scale_factor, w // self.scale_factor),
+            mode="nearest",
+        )
 
-                # 3. Clamp input to prevent bicubic overshooting artifacts
-                t_inp_raw = torch.clamp(t_inp_raw, 0.0, 1.0)
+        t_inp_raw = torch.nn.functional.interpolate(
+            low, size=(h, w), mode="nearest"
+        ).squeeze(0)
 
-                # 4. Normalize both to [-1, 1] for the model
-                self.targets.append(normalize(t_tgt_raw))
-                self.inputs.append(normalize(t_inp_raw))
+        t_inp_raw = torch.clamp(t_inp_raw, 0.0, 1.0)
+
+        t_tgt = self.normalize(t_tgt_raw)
+        t_inp = self.normalize(t_inp_raw)
+        return t_inp, t_tgt
 
 class ImageDataset(inn.BaseImageDataset):
     def __init__(self, folder_path, input_files, target_files, length=None, augment=False, input_size=256):
