@@ -1,6 +1,7 @@
 import os
 import urllib.request
 import zipfile
+from torchvision import transforms
 
 def download(url, folder='./'):
     """Downloads a zip file from a URL and extracts it."""
@@ -17,3 +18,8 @@ def download(url, folder='./'):
         
     os.remove(zip_name)
     print(f'Completed! Extracted to: "{folder}"')
+
+normalize = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # Scales [0, 1] to [-1, 1]
+        ])
