@@ -3,18 +3,18 @@ import torch
 import matplotlib.pyplot as plt
 
 class Model:
-    def __init__(self):
+    def __init__(self, generator_class):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.generator = generator_class().to(self.device)
     
-    def save_model(self, state_dict):
-        torch.save(state_dict, self.save_path)
+    def save_model(self):
+        torch.save(self.generator.state_dict(), self.save_path)
 
     def load_model(self):
         if os.path.exists(self.save_path):
             print(f"-> Found existing checkpoint at '{self.save_path}'. Loading generator...")
-            self.model_state = torch.load(self.save_path, map_location=self.device)
-            if self.model_state is not None:
-                self.model.load_state_dict(self.model_state)
+            state = torch.load(self.save_path, map_location=self.device)
+            self.generator.load_state_dict(state)
         else:
             print("-> Starting generator training from scratch.")
 
