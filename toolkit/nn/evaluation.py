@@ -9,6 +9,7 @@ class Evaluation:
         # 2. Change-Only L1 Loss
         change_mask = (torch.abs(input_tensor - target_tensor) > 1e-4).float()
         abs_error = torch.abs(output_tensor - target_tensor)
+        self.max_error = abs_error.max()
         if change_mask.sum() > 0:
             self.change_l1 = ((abs_error * change_mask).sum() / change_mask.sum()).item()
         else:
