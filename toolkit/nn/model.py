@@ -62,3 +62,15 @@ class Model:
         else:
             print("-> Starting generator training from scratch.")
 
+    def test(self):
+        val_loader = DataLoader(self.val_dataset, batch_size=1, shuffle=False)
+
+        for idx, (val_inputs, val_targets) in enumerate(val_loader):
+            val_inputs, val_targets = val_inputs.to(self.device), val_targets.to(self.device)
+
+            with torch.no_grad():
+                val_outputs = self.generator(val_inputs)
+
+            result = inn.Evaluation(val_inputs, val_outputs, val_targets)
+            result.log()
+            result.plot()
