@@ -1,9 +1,13 @@
 import torch
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 
 class Evaluation:
     def __init__(self, input_tensor, output_tensor, target_tensor, data_range=2.0):
         # 1. Standard L1 Loss
+        self.input = input_tensor
+        self.output = output_tensor
+        self.target = target_tensor
         self.l1 = torch.mean(torch.abs(output_tensor - target_tensor)).item()
 
         # 2. Change-Only L1 Loss
@@ -62,3 +66,32 @@ class Evaluation:
         
         ssim_map = numerator / denominator
         return ssim_map.mean().item()
+
+    def _tensor_to_numpy(tensor):
+        tensor_cpu = tensor.squeeze(0).cpu() * 0.5 + 0.5
+        tensor_cpu = torch.clamp(tensor_cpu, 0.0, 1.0)
+        return tensor_cpu.permute(1, 2, 0).numpy()
+
+    def log(self):
+        print(
+            f"L1: {self.l1:.4f} | "
+            f"Change L1: {self.change_l1:.4f} | "
+            f"Acc: {self.accuracy:.2f}% |"
+            f"Error rate: {self.high_error_rate:.2f}"
+        )
+    def plot(self):
+        fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+
+        axes[0].imshow(self._tensor_to_numpy(self.input))
+        axes[0].set_title(f"Input")
+        axes[0].axis('off')
+
+        axes[1].imshow(self._tensor_to_numpy(self.target))
+        axes[1].set_title(f"Target")
+        axes[1].axis('off')
+
+        axes[2].imshow(self._tensor_to_numpy(self.output))
+        axes[2].set_title(f"Prediction")
+        axes[2].axis('off')
+
+        plt.show()
