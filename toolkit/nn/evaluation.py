@@ -67,7 +67,7 @@ class Evaluation:
         ssim_map = numerator / denominator
         return ssim_map.mean().item()
 
-    def _tensor_to_numpy(tensor):
+    def _tensor_to_numpy(self, tensor):
         tensor_cpu = tensor.squeeze(0).cpu() * 0.5 + 0.5
         tensor_cpu = torch.clamp(tensor_cpu, 0.0, 1.0)
         return tensor_cpu.permute(1, 2, 0).numpy()
