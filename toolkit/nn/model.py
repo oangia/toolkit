@@ -42,10 +42,13 @@ class Tracker:
         plt.show()
         
 class Model:
-    def __init__(self, generator_class):
+    def __init__(self, generator_class, save_path="", train_dataset=None, val_dataset=None):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.generator = generator_class().to(self.device)
         self.tracker = Tracker()
+        self.save_path = save_path
+        self.train_dataset = train_dataset
+        self.val_dataset = val_dataset
     
     def save_model(self, path=None):
         target_path = path if path is not None else self.save_path
