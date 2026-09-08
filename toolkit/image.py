@@ -5,6 +5,7 @@ from io import BytesIO
 from PIL import Image as PILImage, ImageOps, ImageFilter
 from IPython.display import display, HTML
 import numpy as np
+import random
 
 class Image:
     def __init__(self, image_source: str):
