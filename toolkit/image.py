@@ -30,6 +30,32 @@ class Image:
             self.image = self.image.resize((width, height))
         return self
 
+    def scale(self, factor: float = 2.0, method: str = "random") -> 'Image':
+        """Scale the image up or down by a factor using a specified or random interpolation algorithm.
+        
+        - factor > 1.0: Upscales (enlarges) the image.
+        - factor < 1.0: Downscales (shrinks) the image.
+        """
+        methods_map = {
+            "nearest": PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST,
+            "bilinear": PILImage.Resampling.BILINEAR if hasattr(PILImage, 'Resampling') else PILImage.BILINEAR,
+            "bicubic": PILImage.Resampling.BICUBIC if hasattr(PILImage, 'Resampling') else PILImage.BICUBIC,
+            "lanczos": PILImage.Resampling.LANCZOS if hasattr(PILImage, 'Resampling') else PILImage.LANCZOS,
+        }
+        
+        if method.lower() == "random":
+            chosen_key = random.choice(list(methods_map.keys()))
+            resample_filter = methods_map[chosen_key]
+        else:
+            resample_filter = methods_map.get(method.lower(), methods_map["bicubic"])
+        
+        orig_width, orig_height = self.image.size
+        new_width = max(1, int(orig_width * factor))
+        new_height = max(1, int(orig_height * factor))
+        
+        self.image = self.image.resize((new_width, new_height), resample=resample_filter)
+        return self
+        
     def convert_to_grayscale(self) -> 'Image':
         """Convert the image to black and white (grayscale)."""
         self.image = ImageOps.grayscale(self.image)
