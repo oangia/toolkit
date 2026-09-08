@@ -1,6 +1,7 @@
 import os
 import torch
 import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
 
 class Tracker:
     def __init__(self):
@@ -63,7 +64,10 @@ class Model:
             self.generator.load_state_dict(state)
         else:
             print("-> Starting generator training from scratch.")
-
+    def fit(self, epochs=100):
+        for i in range(epochs):
+            pass 
+            
     def test(self):
         val_loader = DataLoader(self.val_dataset, batch_size=1, shuffle=False)
 
