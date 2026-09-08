@@ -49,6 +49,7 @@ class Model:
         self.save_path = save_path
         self.train_dataset = train_dataset
         self.val_dataset = val_dataset
+        self.load_model()
     
     def save_model(self, path=None):
         target_path = path if path is not None else self.save_path
