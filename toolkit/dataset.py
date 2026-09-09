@@ -3,11 +3,10 @@ import random
 import torch
 import cv2
 import numpy as np
-from toolkit.utils import Image
+from toolkit.utils import Image, BaseImageDataset
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
-from toolkit.utils import BaseImageDataset
         
 class MultiPairDataset(BaseImageDataset):
     def __init__(self, inp_paths, tgt_paths, augment=False, input_size=256):
