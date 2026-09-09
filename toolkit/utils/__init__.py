@@ -3,7 +3,7 @@ import urllib.request
 import zipfile
 from torchvision import transforms
 from .image import Image
-from .dataset import BaseImageDataset
+from toolkit.utils.dataset import BaseImageDataset
  
 def download(url, folder='./'):
     """Downloads a zip file from a URL and extracts it."""
