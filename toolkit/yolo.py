@@ -100,3 +100,10 @@ class YOLO(inn.Model):
                 cv2_imshow(display_image)
             else:
                 print(f"\nNo confident object detected for {img_name}")
+
+# ------- YOLO ---------
+#dataset = YOLODataset(data_dir=drive_path + "detection", img_size=256, augment=True)
+#dataset.show_sample()
+#pModel = YOLO()
+#pModel.fit(dataset=dataset, epochs=700)
+#pModel.test(drive_path)
