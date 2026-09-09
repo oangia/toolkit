@@ -2,7 +2,7 @@ import os
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-import toolkit.nn as inn
+import toolkit.nn.evaluation import Evaluation
 
 class Tracker:
     def __init__(self):
@@ -78,6 +78,6 @@ class Model:
             with torch.no_grad():
                 val_outputs = self.generator(val_inputs)
 
-            result = inn.Evaluation(val_inputs, val_outputs, val_targets)
+            result = Evaluation(val_inputs, val_outputs, val_targets)
             result.log()
             result.plot()
