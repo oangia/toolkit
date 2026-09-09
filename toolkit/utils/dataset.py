@@ -8,7 +8,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
-  
+   
 class BaseImageDataset(Dataset):
     def __init__(self, inputs = None, targets = None, batch_size=2, shuffle=True, augment=False):
         self.augment = augment
