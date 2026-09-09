@@ -4,18 +4,21 @@ import torch
 import cv2
 import numpy as np
 from toolkit.utils import Image
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
 
 class BaseImageDataset(Dataset):
-    def __init__(self, inputs = None, targets = None, augment=False):
+    def __init__(self, inputs = None, targets = None, batch_size=2, shuffle=True, augment=False):
         self.augment = augment
         self.normalize = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # Scales [0, 1] to [-1, 1]
         ])
+
+    def loader(self, batch_size=2, shuffle=True):
+        return DataLoader(self, batch_size=batch_size, shuffle=shuffle)
 
     def __len__(self):
         return len(self.inputs)
