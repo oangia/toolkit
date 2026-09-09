@@ -164,3 +164,8 @@ class PatchDiscriminator(nn.Module):
         # Concatenate image and condition/target along channels
         img_input = torch.cat((img_input, img_target), 1)
         return self.model(img_input)
+
+# --- Initialization Script ---
+# Instantiinn.BaseImageDatasetate train and validation sets separately
+#train_dataset = ImageDataset(folder_path=drive_path, input_files=train_inputs, target_files=train_targets, length=100, augment=True, input_size=input_size)
+#val_dataset = ImageDataset(folder_path=drive_path, input_files=val_inputs, target_files=val_targets, augment=False, input_size=input_size)
