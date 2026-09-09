@@ -2,7 +2,7 @@ import os
 import torch
 import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
-from toolkit.nn import Evaluation
+from .evaluation import Evaluation
 
 class Tracker:
     def __init__(self):
