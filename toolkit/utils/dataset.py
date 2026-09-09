@@ -10,7 +10,7 @@ import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
    
 class BaseImageDataset(Dataset):
-    def __init__(self, inputs = None, targets = None, batch_size=2, shuffle=True, augment=False):
+    def __init__(self, inputs = None, targets = None, augment=False):
         self.augment = augment
         self.normalize = transforms.Compose([
             transforms.ToTensor(),
