@@ -9,6 +9,16 @@ import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
 
+class DynamicNormalize:
+    def __call__(self, tensor):
+        if tensor.shape[0] == 4:
+            mean = torch.tensor([0.5, 0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
+            std = torch.tensor([0.5, 0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
+        else:
+            mean = torch.tensor([0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
+            std = torch.tensor([0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
+        return (tensor - mean) / std
+
 class BaseImageDataset(Dataset):
     def __init__(self, inputs = None, targets = None, augment=False):
         self.inputs = inputs
@@ -16,7 +26,7 @@ class BaseImageDataset(Dataset):
         self.augment = augment
         self.normalize = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            DynamicNormalize()
         ])
 
     def loader(self, batch_size=2, shuffle=True):
