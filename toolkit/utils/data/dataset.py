@@ -20,20 +20,23 @@ class DynamicNormalize:
         return (tensor - mean) / std
 
 class BaseImageDataset(Dataset):
-    def __init__(self, inputs = None, targets = None, augment=False):
+    def __init__(self, inputs=None, targets=None, augment=False):
         self.inputs = inputs
         self.targets = targets
         self.augment = augment
-        self.normalize = transforms.Compose([
-            transforms.ToTensor(),
-            DynamicNormalize()
-        ])
+        self.to_tensor = transforms.ToTensor()
+        self.dynamic_normalize = DynamicNormalize()
 
     def loader(self, batch_size=2, shuffle=True):
         return DataLoader(self, batch_size=batch_size, shuffle=shuffle)
 
     def __len__(self):
         return len(self.inputs)
+
+    def _process_item(self, item):
+        if not isinstance(item, torch.Tensor):
+            item = self.to_tensor(item)
+        return self.dynamic_normalize(item)
 
     def _augmentations(self, t_inp, t_tgt):
         if self.augment:
@@ -50,8 +53,8 @@ class BaseImageDataset(Dataset):
         return t_inp, t_tgt
 
     def __getitem__(self, idx):
-        t_inp = self.inputs[idx]
-        t_tgt = self.targets[idx]
+        t_inp = self._process_item(self.inputs[idx])
+        t_tgt = self._process_item(self.targets[idx])
         return self._augmentations(t_inp, t_tgt)
 
     def _prepare_image(self, img):
