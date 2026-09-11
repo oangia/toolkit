@@ -11,11 +11,7 @@ class ImageEnhanceDataset(BaseImageDataset):
         self.input_size = input_size
         self.channels = channels
         
-        if self.channels == 4:
-            self.normalize = transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5))
-        else:
-            self.normalize = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-
+        # REMOVED self.normalize entirely to stop it from crashing on 4 channels
         self.to_tensor = transforms.ToTensor()
 
         self.paths = [
@@ -27,15 +23,23 @@ class ImageEnhanceDataset(BaseImageDataset):
     def __len__(self):
         return len(self.paths)
 
+    def _normalize_tensor(self, tensor):
+        # Force dynamic calculation based on actual tensor channels at runtime
+        if tensor.shape[0] == 4:
+            mean = torch.tensor([0.5, 0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
+            std = torch.tensor([0.5, 0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
+        else:
+            mean = torch.tensor([0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
+            std = torch.tensor([0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
+        return (tensor - mean) / std
+
     def __getitem__(self, idx):
-        scale_factor = random.randint(2, min(8, self.input_size // 4))  # Prevent zero-size output
+        scale_factor = random.randint(2, min(8, self.input_size // 4))  
         img_obj = Image(self.paths[idx])
         
         if hasattr(img_obj, "convert"):
-            # Preserve RGBA if image itself has transparency, even if channels=3 is requested
             if self.channels == 4 or getattr(img_obj, "mode", "") == "RGBA":
                 img_obj = img_obj.convert("RGBA")
-                self.channels = ensure_channels_match_4 = 4 # Handle dynamically if needed
             else:
                 img_obj = img_obj.convert("RGB")
 
@@ -45,7 +49,6 @@ class ImageEnhanceDataset(BaseImageDataset):
         t_tgt_raw = self.to_tensor(chunk)
         _, h, w = t_tgt_raw.shape
 
-        # Ensure target sizes are at least 1
         low_h = max(1, h // scale_factor)
         low_w = max(1, w // scale_factor)
 
@@ -65,6 +68,7 @@ class ImageEnhanceDataset(BaseImageDataset):
 
         t_inp_raw = torch.clamp(t_inp_raw, 0.0, 1.0)
 
-        t_tgt = self.normalize(t_tgt_raw)
-        t_inp = self.normalize(t_inp_raw)
+        # Explicitly use our custom dynamic normalizer
+        t_tgt = self._normalize_tensor(t_tgt_raw)
+        t_inp = self._normalize_tensor(t_inp_raw)
         return t_inp, t_tgt
