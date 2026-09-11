@@ -4,6 +4,7 @@ import torch
 from toolkit.utils import Image
 from .dataset import BaseImageDataset
 import torchvision.transforms as transforms
+import torchvision.transforms.functional as TF
 
 class ImageEnhanceDataset(BaseImageDataset):
     def __init__(self, data_dir, input_size=512, channels=3):
@@ -31,6 +32,20 @@ class ImageEnhanceDataset(BaseImageDataset):
             std = torch.tensor([0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
         return (tensor - mean) / std
 
+    def _augmentations(self, t_inp, t_tgt):
+        if self.augment:
+            if random.random() > 0.5:
+                t_inp = TF.hflip(t_inp)
+                t_tgt = TF.hflip(t_tgt)
+            if random.random() > 0.5:
+                t_inp = TF.vflip(t_inp)
+                t_tgt = TF.vflip(t_tgt)
+            rot_angle = random.choice([0, 90, 180, 270])
+            if rot_angle > 0:
+                t_inp = TF.rotate(t_inp, rot_angle)
+                t_tgt = TF.rotate(t_tgt, rot_angle)
+        return t_inp, t_tgt
+        
     def __getitem__(self, idx):
         scale_factor = random.randint(2, min(8, self.input_size // 4))  
         img_obj = Image(self.paths[idx])
@@ -80,4 +95,4 @@ class ImageEnhanceDataset(BaseImageDataset):
 
         t_tgt = self._normalize_tensor(t_tgt_raw)
         t_inp = self._normalize_tensor(t_inp_raw)
-        return t_inp, t_tgt
+        return self._augmentations(t_inp, t_tgt)
