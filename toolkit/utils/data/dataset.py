@@ -8,13 +8,15 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
-   
+
 class BaseImageDataset(Dataset):
     def __init__(self, inputs = None, targets = None, augment=False):
+        self.inputs = inputs
+        self.targets = targets
         self.augment = augment
         self.normalize = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)) # Scales [0, 1] to [-1, 1]
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
     def loader(self, batch_size=2, shuffle=True):
@@ -43,40 +45,37 @@ class BaseImageDataset(Dataset):
         return self._augmentations(t_inp, t_tgt)
 
     def _prepare_image(self, img):
-       # Detach from graph and move to CPU if it's a tensor
-       if hasattr(img, "detach"):
-           img = img.detach().cpu()
-       
-       # Scale values and convert to numpy
-       img = torch.clamp((img * 0.5) + 0.5, 0, 1)
-       if hasattr(img, "numpy"):
-           img = img.numpy()
-           
-       # If shape is (C, H, W) where C is 3 or 4, convert to (H, W, C)
-       if img.ndim == 3 and img.shape[0] in [3, 4]:
-           img = np.transpose(img, (1, 2, 0))
-           
-       return img
-   
-   def _inp(self, t_inp):
-       return self._prepare_image(t_inp)
-       
-   def _out(self, t_inp, t_tgt):
-       return self._prepare_image(t_tgt)
-       
-   def show_sample(self, limit=None):
-       total = len(self)
-       num_to_show = total if limit is None else min(total, limit)
-       for idx in range(num_to_show):
-           t_inp, t_tgt = self[idx]
-   
-           fig, axes = plt.subplots(1, 2, figsize=(8, 4))
-           axes[0].imshow(self._inp(t_inp))
-           axes[0].set_title(f"Input [{idx}]")
-           axes[0].axis('off')
-   
-           axes[1].imshow(self._out(t_inp, t_tgt))
-           axes[1].set_title(f"Target [{idx}]")
-           axes[1].axis('off')
-   
-           plt.show()
+        if hasattr(img, "detach"):
+            img = img.detach().cpu()
+        
+        img = torch.clamp((img * 0.5) + 0.5, 0, 1)
+        if hasattr(img, "numpy"):
+            img = img.numpy()
+            
+        if img.ndim == 3 and img.shape[0] in [3, 4]:
+            img = np.transpose(img, (1, 2, 0))
+            
+        return img
+    
+    def _inp(self, t_inp):
+        return self._prepare_image(t_inp)
+        
+    def _out(self, t_inp, t_tgt):
+        return self._prepare_image(t_tgt)
+        
+    def show_sample(self, limit=None):
+        total = len(self)
+        num_to_show = total if limit is None else min(total, limit)
+        for idx in range(num_to_show):
+            t_inp, t_tgt = self[idx]
+
+            fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+            axes[0].imshow(self._inp(t_inp))
+            axes[0].set_title(f"Input [{idx}]")
+            axes[0].axis('off')
+
+            axes[1].imshow(self._out(t_inp, t_tgt))
+            axes[1].set_title(f"Target [{idx}]")
+            axes[1].axis('off')
+
+            plt.show()
