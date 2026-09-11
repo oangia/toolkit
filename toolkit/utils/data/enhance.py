@@ -11,7 +11,6 @@ class ImageEnhanceDataset(BaseImageDataset):
         self.input_size = input_size
         self.channels = channels
         
-        # REMOVED self.normalize entirely to stop it from crashing on 4 channels
         self.to_tensor = transforms.ToTensor()
 
         self.paths = [
@@ -24,7 +23,6 @@ class ImageEnhanceDataset(BaseImageDataset):
         return len(self.paths)
 
     def _normalize_tensor(self, tensor):
-        # Force dynamic calculation based on actual tensor channels at runtime
         if tensor.shape[0] == 4:
             mean = torch.tensor([0.5, 0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
             std = torch.tensor([0.5, 0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
@@ -38,7 +36,6 @@ class ImageEnhanceDataset(BaseImageDataset):
         img_obj = Image(self.paths[idx])
         
         if hasattr(img_obj, "convert"):
-            # Uniformly force the conversion to match self.channels globally
             if self.channels == 4:
                 img_obj = img_obj.convert("RGBA")
             else:
@@ -48,6 +45,18 @@ class ImageEnhanceDataset(BaseImageDataset):
         chunk = random.choice(chunks)
 
         t_tgt_raw = self.to_tensor(chunk)
+        
+        # Foolproof channel enforcement to override any internal toolkit clipping
+        if self.channels == 4:
+            if t_tgt_raw.shape[0] == 3:
+                alpha = torch.ones((1, t_tgt_raw.shape[1], t_tgt_raw.shape[2]), dtype=t_tgt_raw.dtype, device=t_tgt_raw.device)
+                t_tgt_raw = torch.cat([t_tgt_raw, alpha], dim=0)
+            elif t_tgt_raw.shape[0] > 4:
+                t_tgt_raw = t_tgt_raw[:4, :, :]
+        else:
+            if t_tgt_raw.shape[0] == 4:
+                t_tgt_raw = t_tgt_raw[:3, :, :]
+
         _, h, w = t_tgt_raw.shape
 
         low_h = max(1, h // scale_factor)
