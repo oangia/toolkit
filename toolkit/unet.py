@@ -16,7 +16,7 @@ class DoubleConv(nn.Module):
         return self.double_conv(x)
         
 class UNet(nn.Module):
-    def __init__(self, in_channels=3, out_channels=3, features=[64, 128, 256, 512, 512, 512, 512, 512]):
+    def __init__(self, in_channels=4, out_channels=4, features=[64, 128, 256, 512, 512, 512, 512, 512]):
         super().__init__()
         
         encoder_activation = nn.LeakyReLU(0.2, inplace=True)
