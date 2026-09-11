@@ -38,7 +38,8 @@ class ImageEnhanceDataset(BaseImageDataset):
         img_obj = Image(self.paths[idx])
         
         if hasattr(img_obj, "convert"):
-            if self.channels == 4 or getattr(img_obj, "mode", "") == "RGBA":
+            # Uniformly force the conversion to match self.channels globally
+            if self.channels == 4:
                 img_obj = img_obj.convert("RGBA")
             else:
                 img_obj = img_obj.convert("RGB")
@@ -68,7 +69,6 @@ class ImageEnhanceDataset(BaseImageDataset):
 
         t_inp_raw = torch.clamp(t_inp_raw, 0.0, 1.0)
 
-        # Explicitly use our custom dynamic normalizer
         t_tgt = self._normalize_tensor(t_tgt_raw)
         t_inp = self._normalize_tensor(t_inp_raw)
         return t_inp, t_tgt
