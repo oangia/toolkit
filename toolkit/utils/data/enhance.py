@@ -35,7 +35,7 @@ class ImageEnhanceDataset(BaseImageDataset):
     low = torch.nn.functional.interpolate(
         t_tgt_raw.unsqueeze(0),
         size=(h // scale_factor, w // scale_factor),
-        mode=random.choice(["nearest", "bilinear", "bicubic", "lanczos"]),
+        mode=random.choice(["nearest", "linear", "bilinear", "bicubic", "trilinear", "area", "nearest-exact"]),
     )
 
     t_inp_raw = torch.nn.functional.interpolate(
