@@ -34,10 +34,9 @@ class MultiPairDataset(BaseImageDataset):
                 self.targets.append(t_tgt)
 
 class ImageEnhanceDataset(BaseImageDataset):
-    def __init__(self, data_dir, input_size=256, scale_factor=8):
+    def __init__(self, data_dir, input_size=256):
         super().__init__(augment=False)
         self.input_size = input_size
-        self.scale_factor = scale_factor
         self.to_tensor = transforms.ToTensor()
         self.normalize = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         
@@ -51,6 +50,7 @@ class ImageEnhanceDataset(BaseImageDataset):
         return len(self.paths)
 
     def __getitem__(self, idx):
+        scale_factor = random.randint(2, 16)
         chunks = Image(self.paths[idx]).slice_image(self.input_size)
         chunk = random.choice(chunks)
 
@@ -62,8 +62,8 @@ class ImageEnhanceDataset(BaseImageDataset):
 
         low = torch.nn.functional.interpolate(
             t_tgt_raw.unsqueeze(0),
-            size=(h // self.scale_factor, w // self.scale_factor),
-            mode=random.choice(["nearest", "bilinear", "bicubic"]),
+            size=(h // scale_factor, w // scale_factor),
+            mode=random.choice(["nearest", "bilinear", "bicubic", "lanczos"]),
         )
 
         t_inp_raw = torch.nn.functional.interpolate(
