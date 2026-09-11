@@ -28,12 +28,14 @@ class ImageEnhanceDataset(BaseImageDataset):
         return len(self.paths)
 
     def __getitem__(self, idx):
-        scale_factor = random.randint(2, 16)
+        scale_factor = random.randint(2, min(8, self.input_size // 4))  # Prevent zero-size output
         img_obj = Image(self.paths[idx])
         
         if hasattr(img_obj, "convert"):
-            if self.channels == 4:
+            # Preserve RGBA if image itself has transparency, even if channels=3 is requested
+            if self.channels == 4 or getattr(img_obj, "mode", "") == "RGBA":
                 img_obj = img_obj.convert("RGBA")
+                self.channels = ensure_channels_match_4 = 4 # Handle dynamically if needed
             else:
                 img_obj = img_obj.convert("RGB")
 
@@ -43,10 +45,18 @@ class ImageEnhanceDataset(BaseImageDataset):
         t_tgt_raw = self.to_tensor(chunk)
         _, h, w = t_tgt_raw.shape
 
+        # Ensure target sizes are at least 1
+        low_h = max(1, h // scale_factor)
+        low_w = max(1, w // scale_factor)
+
+        interp_mode = random.choice(["nearest", "bilinear", "bicubic"])
+        align_args = {"align_corners": False} if interp_mode in ["bilinear", "bicubic"] else {}
+
         low = torch.nn.functional.interpolate(
             t_tgt_raw.unsqueeze(0),
-            size=(h // scale_factor, w // scale_factor),
-            mode=random.choice(["nearest", "bilinear", "bicubic"]),
+            size=(low_h, low_w),
+            mode=interp_mode,
+            **align_args
         )
 
         t_inp_raw = torch.nn.functional.interpolate(
