@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Header Extractor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+    <input type="file" id="pdfUpload" accept=".pdf">
+    <pre id="output">Select a PDF file...</pre>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        document.getElementById('pdfUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const output = document.getElementById('output');
+            output.textContent = 'Extracting...';
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                let results = [];
+
+                const outline = await pdfDoc.getOutline();
+                if (outline && outline.length > 0) {
+                    function extractOutlineTitles(items) {
+                        let titles = [];
+                        for (let item of items) {
+                            if (item.title) titles.push(item.title.trim());
+                            if (item.items && item.items.length > 0) {
+                                titles.push(...extractOutlineTitles(item.items));
+                            }
+                        }
+                        return titles;
+                    }
+                    results.push("--- OUTLINE TITLES ---");
+                    results.push(...extractOutlineTitles(outline));
+                }
+
+                for (let i = 1; i <= pdfDoc.numPages; i++) {
+                    const page = await pdfDoc.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const items = textContent.items;
+                    const styles = textContent.styles;
+
+                    if (items.length === 0) continue;
+
+                    let heights = items.map(item => item.height || Math.abs(item.transform[3]));
+                    let avgHeight = heights.reduce((a, b) => a + b, 0) / heights.length;
+
+                    let linesMap = {};
+                    items.forEach(item => {
+                        if (!item.str.trim()) return;
+                        let y = Math.round(item.transform[5] / 4) * 4;
+                        if (!linesMap[y]) linesMap[y] = [];
+                        
+                        let fontName = item.fontName;
+                        let fontStyle = styles[fontName] || {};
+                        let isBold = (fontStyle.name && /bold|black|heavy/i.test(fontStyle.name)) || 
+                                     (fontName && /bold|black|heavy/i.test(fontName));
+
+                        linesMap[y].push({
+                            str: item.str,
+                            height: item.height || Math.abs(item.transform[3]),
+                            isBold: isBold,
+                            x: item.transform[4]
+                        });
+                    });
+
+                    // Sort Y coordinates descending so the top of the page comes first
+                    let sortedYs = Object.keys(linesMap).map(Number).sort((a, b) => b - a);
+                    let pageHeaders = [];
+
+                    for (let y of sortedYs) {
+                        let lineItems = linesMap[y].sort((a, b) => a.x - b.x);
+                        let lineText = lineItems.map(it => it.str).join(' ').trim();
+                        let maxHeight = Math.max(...lineItems.map(it => it.height));
+                        let hasBold = lineItems.some(it => it.isBold);
+
+                        if ((maxHeight > avgHeight * 1.1) || (hasBold && maxHeight >= avgHeight * 0.95 && lineText.length < 120)) {
+                            pageHeaders.push(lineText);
+                        }
+                    }
+
+                    let uniqueHeaders = [...new Set(pageHeaders)];
+                    if (uniqueHeaders.length > 0) {
+                        results.push(`--- Page ${i} ---`);
+                        results.push(...uniqueHeaders);
+                    }
+                }
+
+                output.textContent = results.length > 0 ? results.join('\n') : 'No headers or titles found.';
+            } catch (error) {
+                output.textContent = 'Error: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>
