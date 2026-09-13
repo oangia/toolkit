@@ -9,34 +9,18 @@ import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
 
-class DynamicNormalize:
-    def __call__(self, tensor):
-        if tensor.shape[0] == 4:
-            mean = torch.tensor([0.5, 0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
-            std = torch.tensor([0.5, 0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
-        else:
-            mean = torch.tensor([0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
-            std = torch.tensor([0.5, 0.5, 0.5], device=tensor.device).view(-1, 1, 1)
-        return (tensor - mean) / std
-
 class BaseImageDataset(Dataset):
-    def __init__(self, inputs=None, targets=None, augment=False):
-        self.inputs = inputs
-        self.targets = targets
+    def __init__(self, data_path, augment=False, channels=3):
+        self.data_path = data_path
         self.augment = augment
-        self.to_tensor = transforms.ToTensor()
-        self.dynamic_normalize = DynamicNormalize()
-
-    def loader(self, batch_size=2, shuffle=True):
-        return DataLoader(self, batch_size=batch_size, shuffle=shuffle)
+        self.channels = channels
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.5,) * self.channels, (0.5,) * self.channels) # Scales [0, 1] to [-1, 1]
+        ])
 
     def __len__(self):
         return len(self.inputs)
-
-    def _process_item(self, item):
-        if not isinstance(item, torch.Tensor):
-            item = self.to_tensor(item)
-        return self.dynamic_normalize(item)
 
     def _augmentations(self, t_inp, t_tgt):
         if self.augment:
@@ -53,8 +37,8 @@ class BaseImageDataset(Dataset):
         return t_inp, t_tgt
 
     def __getitem__(self, idx):
-        t_inp = self._process_item(self.inputs[idx])
-        t_tgt = self._process_item(self.targets[idx])
+        t_inp = self.transform(self.inputs[idx])
+        t_tgt = self.transform(self.targets[idx])
         return self._augmentations(t_inp, t_tgt)
 
     def _prepare_image(self, img):
