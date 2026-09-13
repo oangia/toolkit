@@ -24,7 +24,8 @@ class Image:
             raise ValueError(f"Failed to load image from {image_source}: {e}")
 
     def convert(self, channels=3):
-        self.image = self.image.convert("RGBA" if channels == 4 else "RGB")
+        if channels == 4:
+            self.image = self.image.convert("RGBA")
         return self
         
     def resize(self, width: int, height: int, keep_aspect_ratio: bool = True) -> 'Image':
