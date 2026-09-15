@@ -34,29 +34,28 @@ class ImageEnhanceDataset(BaseImageDataset):
 
     def _low(self, target):
         scale_factor = random.randint(2, min(16, self.input_size // 4))  
-        t_tgt_raw = self.transform(target)
-    
-        _, h, w = t_tgt_raw.shape
-
+        w, h = target.size    
         low_h = max(1, h // scale_factor)
         low_w = max(1, w // scale_factor)
-
-        interp_mode = random.choice(["nearest", "bilinear", "bicubic"])
-        align_args = {"align_corners": False} if interp_mode in ["bilinear", "bicubic"] else {}
-
-        low = torch.nn.functional.interpolate(
-            t_tgt_raw.unsqueeze(0),
-            size=(low_h, low_w),
-            mode=interp_mode,
-            **align_args
-        )
-
-        t_inp_raw = torch.nn.functional.interpolate(
-            low, size=(h, w), mode="nearest"
-        ).squeeze(0)
-
-        t_inp_raw = torch.clamp(t_inp_raw, 0.0, 1.0)
-        return t_inp_raw
+    
+        # Map string modes to PIL Resampling filters
+        methods_map = {
+            "nearest": PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST,
+            "bilinear": PILImage.Resampling.BILINEAR if hasattr(PILImage, 'Resampling') else PILImage.BILINEAR,
+            "bicubic": PILImage.Resampling.BICUBIC if hasattr(PILImage, 'Resampling') else PILImage.BICUBIC,
+        }
+        
+        interp_name = random.choice(list(methods_map.keys()))
+        downscale_filter = methods_map[interp_name]
+    
+        # 1. Downscale the image
+        low_img = target.resize((low_w, low_h), resample=downscale_filter)
+    
+        # 2. Upscale back to original size using nearest neighbor (matching your torch code)
+        upscale_filter = PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST
+        inp_img = low_img.resize((w, h), resample=upscale_filter)
+    
+        return inp_img
 
     def _augmentations(self, t_inp, t_tgt):
         if self.augment:
