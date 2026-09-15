@@ -7,10 +7,7 @@ from IPython.display import display, HTML
 import numpy as np
 import random
 
-class BaseImage:
-    class BaseImage:
-    """Parent class containing foundational, basic image actions."""
-    
+class BaseImage:    
     def __init__(self, image_source):
         """Initialize the processor by loading an image from multiple possible source types."""
         try:
