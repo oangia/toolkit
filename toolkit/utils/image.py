@@ -7,7 +7,9 @@ from IPython.display import display, HTML
 import numpy as np
 import random
 
-class Image:
+class BaseImage:
+    """Parent class containing foundational, basic image actions."""
+    
     def __init__(self, image_source: str):
         """Initialize the processor by loading an image from a local file path or a web URL."""
         try:
@@ -18,8 +20,6 @@ class Image:
                 self.image = PILImage.open(BytesIO(response.content))
             else:
                 self.image = PILImage.open(image_source)
-            self.x_coords = []
-            self.y_coords = []
         except Exception as e:
             raise ValueError(f"Failed to load image from {image_source}: {e}")
 
@@ -28,7 +28,7 @@ class Image:
             self.image = self.image.convert("RGBA")
         return self
         
-    def resize(self, width: int, height: int, keep_aspect_ratio: bool = True) -> 'Image':
+    def resize(self, width: int, height: int, keep_aspect_ratio: bool = True) -> 'BaseImage':
         """Resize the image to specified dimensions."""
         if keep_aspect_ratio:
             self.image.thumbnail((width, height))
@@ -36,7 +36,46 @@ class Image:
             self.image = self.image.resize((width, height))
         return self
 
-    def scale(self, factor: float = 2.0, method: str = "random") -> 'Image':
+    def convert_to_grayscale(self) -> 'BaseImage':
+        """Convert the image to black and white (grayscale)."""
+        self.image = ImageOps.grayscale(self.image)
+        return self
+
+    def rotate(self, angle: float) -> 'BaseImage':
+        """Rotate the image counter-clockwise by a given angle."""
+        self.image = self.image.rotate(angle, expand=True)
+        return self
+
+    def crop(self, box: tuple) -> 'BaseImage':
+        """Crop the image using a bounding box tuple (left, upper, right, lower)."""
+        self.image = self.image.crop(box)
+        return self
+
+    def show(self) -> 'BaseImage':
+        """Display the current state of the image."""
+        display(self.image)
+        return self
+
+    def toPil(self):
+        return self.image
+
+    def save(self, output_path: str) -> None:
+        """Save the processed image to disk."""
+        try:
+            self.image.save(output_path)
+            print(f"Image successfully saved to {output_path}")
+        except Exception as e:
+            raise IOError(f"Failed to save image: {e}")
+
+class UImage(BaseImage):
+    """Child class containing advanced logic, filters, math computations, and grid visualization."""
+    
+    def __init__(self, image_source: str):
+        super().__init__(image_source)
+        self.x_coords = []
+        self.y_coords = []
+
+    def scale(self, factor: float = 2.0, method: str = "random") -> 'AdvancedImage':
         """Scale the image up or down by a factor using a specified or random interpolation algorithm.
         
         - factor > 1.0: Upscales (enlarges) the image.
@@ -61,23 +100,8 @@ class Image:
         
         self.image = self.image.resize((new_width, new_height), resample=resample_filter)
         return self
-        
-    def convert_to_grayscale(self) -> 'Image':
-        """Convert the image to black and white (grayscale)."""
-        self.image = ImageOps.grayscale(self.image)
-        return self
 
-    def rotate(self, angle: float) -> 'Image':
-        """Rotate the image counter-clockwise by a given angle."""
-        self.image = self.image.rotate(angle, expand=True)
-        return self
-
-    def crop(self, box: tuple) -> 'Image':
-        """Crop the image using a bounding box tuple (left, upper, right, lower)."""
-        self.image = self.image.crop(box)
-        return self
-
-    def crop_center(self, width: int = 512, height: int = 512) -> 'Image':
+    def crop_center(self, width: int = 512, height: int = 512) -> 'AdvancedImage':
         """Automatically crop a box of the specified size from the center of the image."""
         img_width, img_height = self.image.size
 
@@ -92,7 +116,7 @@ class Image:
         self.image = self.image.crop((left, upper, right, lower))
         return self
 
-    def edge(self, grayscale: bool = True) -> 'Image':
+    def edge(self, grayscale: bool = True) -> 'AdvancedImage':
         """Detects edges in the image using Pillow's FIND_EDGES filter."""
         if grayscale and self.image.mode != 'L':
             self.image = ImageOps.grayscale(self.image)
@@ -137,7 +161,7 @@ class Image:
 
         return tiles
 
-    def display_grid(self, tiles: list, display_size: int = 128) -> 'Image':
+    def display_grid(self, tiles: list, display_size: int = 128) -> 'AdvancedImage':
         """Display the sliced tiles in a 2D horizontal/vertical grid layout."""
         cols = len(self.x_coords)
         if cols == 0:
@@ -159,7 +183,7 @@ class Image:
         display(HTML(html))
         return self
 
-    def quantize_colors(self, k: int = 8) -> 'Image':
+    def quantize_colors(self, k: int = 8) -> 'AdvancedImage':
         if self.image.mode != 'RGB':
             self.image = self.image.convert('RGB')
 
@@ -179,19 +203,3 @@ class Image:
 
         self.image = PILImage.fromarray(quantized_np)
         return self
-
-    def show(self) -> 'Image':
-        """Display the current state of the image."""
-        display(self.image)
-        return self
-
-    def toPil(self):
-        return self.image
-
-    def save(self, output_path: str) -> None:
-        """Save the processed image to disk."""
-        try:
-            self.image.save(output_path)
-            print(f"Image successfully saved to {output_path}")
-        except Exception as e:
-            raise IOError(f"Failed to save image: {e}")
