@@ -11,7 +11,7 @@ class ImageEnhanceDataset(BaseImageDataset):
         super().__init__(data_path=data_path, channels=channels)
         self.input_size = input_size
         self.paths = [
-            os.path.join(data_dir, f)
+            os.path.join(data_path, f)
             for f in sorted(os.listdir(data_path))
             if f.lower().endswith((".jpg", ".jpeg", ".png", ".bmp", ".webp"))
         ]
