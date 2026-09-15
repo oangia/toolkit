@@ -26,7 +26,7 @@ class ImageEnhanceDataset(BaseImageDataset):
         chunks = img_obj.slice_image(self.input_size)
         
         target = random.choice(chunks)
-        input = self._low(target, scale_factor)
+        input = self._low(target)
 
         t_tgt = self.tranform(target)
         t_inp = self.tranform(input)
