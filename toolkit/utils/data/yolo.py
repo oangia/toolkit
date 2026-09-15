@@ -3,7 +3,7 @@ import random
 import torch
 import cv2
 import numpy as np
-from toolkit.utils import Image
+from toolkit.utils import UImage
 from .dataset import BaseImageDataset
    
 class YOLODataset(BaseImageDataset):
