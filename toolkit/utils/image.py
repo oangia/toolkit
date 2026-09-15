@@ -83,8 +83,8 @@ class BaseImage:
             raise IOError(f"Failed to save image: {e}")
 
 class UImage(BaseImage):
-    def __init__(self, image_source: str):
-        super().__init__(image_source)
+    def __init__(self, image_source, channels=3):
+        super().__init__(image_source, channels)
         self.x_coords = []
         self.y_coords = []
 
