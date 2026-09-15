@@ -21,11 +21,9 @@ class ImageEnhanceDataset(BaseImageDataset):
         return len(self.paths)
 
     def __getitem__(self, idx):
-        img_obj = UImage(self.paths[idx])
-        img_obj = img_obj.convert(channels = self.channels)
+        img_obj = UImage(self.paths[idx], channels=self.channels)
 
         chunks = img_obj.slice_image(self.input_size)
-        
         target = random.choice(chunks)
         input = UImage(target).lower_quality().toPil()
 
