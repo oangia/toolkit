@@ -217,3 +217,28 @@ class UImage(BaseImage):
 
         self.image = PILImage.fromarray(quantized_np)
         return self
+
+    def lower_quality(self):
+        scale_factor = random.randint(2, min(16, self.input_size // 4))  
+        w, h = self.image.size    
+        low_h = max(1, h // scale_factor)
+        low_w = max(1, w // scale_factor)
+    
+        # Map string modes to PIL Resampling filters
+        methods_map = {
+            "nearest": PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST,
+            "bilinear": PILImage.Resampling.BILINEAR if hasattr(PILImage, 'Resampling') else PILImage.BILINEAR,
+            "bicubic": PILImage.Resampling.BICUBIC if hasattr(PILImage, 'Resampling') else PILImage.BICUBIC,
+        }
+        
+        interp_name = random.choice(list(methods_map.keys()))
+        downscale_filter = methods_map[interp_name]
+    
+        # 1. Downscale the image
+        low_img = self.image.resize((low_w, low_h), resample=downscale_filter)
+    
+        # 2. Upscale back to original size using nearest neighbor (matching your torch code)
+        upscale_filter = PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST
+        self.image = low_img.resize((w, h), resample=upscale_filter)
+    
+        return self
