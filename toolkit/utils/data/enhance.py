@@ -5,6 +5,7 @@ from toolkit.utils import UImage
 from .dataset import BaseImageDataset
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
+from PIL import Image as PILImage
 
 class ImageEnhanceDataset(BaseImageDataset):
     def __init__(self, data_path, input_size=512, channels=4):
