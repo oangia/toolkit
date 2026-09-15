@@ -3,7 +3,7 @@ import random
 import torch
 import cv2
 import numpy as np
-from toolkit.utils import Image, BaseImageDataset
+from toolkit.utils import UImage, BaseImageDataset
 import torchvision.transforms as transforms
 import torchvision.transforms.functional as TF
 import matplotlib.pyplot as plt
