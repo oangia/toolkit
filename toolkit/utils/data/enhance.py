@@ -34,7 +34,7 @@ class ImageEnhanceDataset(BaseImageDataset):
 
     def _low(self, target):
         scale_factor = random.randint(2, min(16, self.input_size // 4))  
-        t_tgt_raw = self.transform(chunk)
+        t_tgt_raw = self.transform(target)
     
         _, h, w = t_tgt_raw.shape
 
