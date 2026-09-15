@@ -8,7 +8,7 @@ import torchvision.transforms.functional as TF
 
 class ImageEnhanceDataset(BaseImageDataset):
     def __init__(self, data_path, input_size=512, channels=4):
-        super().__init__(channels=channels)
+        super().__init__(data_path=data_path, channels=channels)
         self.input_size = input_size
         self.paths = [
             os.path.join(data_dir, f)
