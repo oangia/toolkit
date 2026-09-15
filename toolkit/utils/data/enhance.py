@@ -28,8 +28,8 @@ class ImageEnhanceDataset(BaseImageDataset):
         target = random.choice(chunks)
         input = self._low(target)
 
-        t_tgt = self.tranform(target)
-        t_inp = self.tranform(input)
+        t_tgt = self.transform(target)
+        t_inp = self.transform(input)
         return self._augmentations(t_inp, t_tgt)
 
     def _low(self, target):
