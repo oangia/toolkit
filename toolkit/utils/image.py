@@ -8,20 +8,39 @@ import numpy as np
 import random
 
 class BaseImage:
+    class BaseImage:
     """Parent class containing foundational, basic image actions."""
     
-    def __init__(self, image_source: str):
-        """Initialize the processor by loading an image from a local file path or a web URL."""
+    def __init__(self, image_source):
+        """Initialize the processor by loading an image from multiple possible source types."""
         try:
             self.image_path = image_source
-            if image_source.startswith(('http://', 'https://')):
-                response = requests.get(image_source)
-                response.raise_for_status()
-                self.image = PILImage.open(BytesIO(response.content))
-            else:
+            # 1. If it's already a PIL Image object
+            if isinstance(image_source, PILImage.Image):
+                self.image = image_source
+            # 2. If it's raw bytes
+            elif isinstance(image_source, bytes):
+                self.image = PILImage.open(BytesIO(image_source))
+
+            # 3. If it's a BytesIO stream
+            elif isinstance(image_source, BytesIO):
                 self.image = PILImage.open(image_source)
+            # 4. If it's a NumPy array
+            elif isinstance(image_source, np.ndarray):
+                self.image = PILImage.fromarray(image_source)
+            # 5. If it's a string (local path or URL)
+            elif isinstance(image_source, str):
+                if image_source.startswith(('http://', 'https://')):
+                    response = requests.get(image_source)
+                    response.raise_for_status()
+                    self.image = PILImage.open(BytesIO(response.content))
+                else:
+                    self.image = PILImage.open(image_source)
+            else:
+                raise TypeError(f"Unsupported image source type: {type(image_source)}")
+                
         except Exception as e:
-            raise ValueError(f"Failed to load image from {image_source}: {e}")
+            raise ValueError(f"Failed to load image from source: {e}")
 
     def convert(self, channels=3):
         if channels == 4:
@@ -36,7 +55,7 @@ class BaseImage:
             self.image = self.image.resize((width, height))
         return self
 
-    def convert_to_grayscale(self) -> 'BaseImage':
+    def to_gray(self) -> 'BaseImage':
         """Convert the image to black and white (grayscale)."""
         self.image = ImageOps.grayscale(self.image)
         return self
@@ -68,8 +87,6 @@ class BaseImage:
             raise IOError(f"Failed to save image: {e}")
 
 class UImage(BaseImage):
-    """Child class containing advanced logic, filters, math computations, and grid visualization."""
-    
     def __init__(self, image_source: str):
         super().__init__(image_source)
         self.x_coords = []
