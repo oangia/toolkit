@@ -8,10 +8,11 @@ import numpy as np
 import random
 
 class BaseImage:    
-    def __init__(self, image_source):
+    def __init__(self, image_source, channels=3):
+        self.channels = channels
+        self.image_path = image_source
         """Initialize the processor by loading an image from multiple possible source types."""
         try:
-            self.image_path = image_source
             # 1. If it's already a PIL Image object
             if isinstance(image_source, PILImage.Image):
                 self.image = image_source
@@ -39,10 +40,8 @@ class BaseImage:
         except Exception as e:
             raise ValueError(f"Failed to load image from source: {e}")
 
-    def convert(self, channels=3):
-        if channels == 4:
+        if self.channels == 4:
             self.image = self.image.convert("RGBA")
-        return self
         
     def resize(self, width: int, height: int, keep_aspect_ratio: bool = True) -> 'BaseImage':
         """Resize the image to specified dimensions."""
