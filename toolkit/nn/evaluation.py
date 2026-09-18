@@ -10,12 +10,12 @@ class Evaluation:
         self.target = target_tensor.detach()
 
         # 1. Standard L1 Loss
-        self.l1 = torch.mean(torch.abs(self.output - self.target)).detach()
+        self.l1 = torch.mean(torch.abs(self.output - self.target)).item()
 
         # 2. Continuous Percentage Accuracy
         abs_error = torch.abs(self.output - self.target)
         mean_relative_error = torch.mean(abs_error) / data_range
-        self.accuracy = (1.0 - mean_relative_error).detach() * 100.0
+        self.accuracy = (1.0 - mean_relative_error).item() * 100.0
 
     def _tensor_to_numpy(self, tensor):
         tensor_cpu = tensor.squeeze(0).cpu() * 0.5 + 0.5
