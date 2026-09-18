@@ -174,6 +174,19 @@ class UImage(BaseImage):
 
         return tiles
 
+    def get_random_crop(self, tile_size: int = 512):
+        """Directly crops a single random tile of `tile_size` without slicing the whole image."""
+        img_width, img_height = self.image.size
+    
+        if img_width < tile_size or img_height < tile_size:
+            raise ValueError(f"Image size ({img_width}x{img_height}) is smaller than tile size ({tile_size}x{tile_size}).")
+    
+        # Pick a random top-left (x, y) position within valid boundaries
+        x = random.randint(0, img_width - tile_size)
+        y = random.randint(0, img_height - tile_size)
+    
+        box = (x, y, x + tile_size, y + tile_size)
+        return self.image.crop(box)
     def display_grid(self, tiles: list, display_size: int = 128) -> 'AdvancedImage':
         """Display the sliced tiles in a 2D horizontal/vertical grid layout."""
         cols = len(self.x_coords)
