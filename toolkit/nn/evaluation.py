@@ -92,23 +92,15 @@ class Evaluation:
         )
 
     def plot(self):
-        fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+        fig, axes = plt.subplots(1, 2, figsize=(16, 8))
 
         axes[0].imshow(self._tensor_to_numpy(self.input))
         axes[0].set_title("Input")
         axes[0].axis('off')
 
-        axes[1].imshow(self._tensor_to_numpy(self.target))
+        axes[1].imshow(self._tensor_to_numpy(self.output))
         axes[1].set_title("Target")
         axes[1].axis('off')
-
-        axes[2].imshow(self._tensor_to_numpy(self.output))
-        axes[2].set_title("Prediction")
-        axes[2].axis('off')
-
-        axes[3].imshow(self._tensor_to_numpy(self.shifted_output))
-        axes[3].set_title(f"Color-Shifted\nDist: {self.color_distance:.4f}")
-        axes[3].axis('off')
-
+        
         plt.tight_layout()
         plt.show()
