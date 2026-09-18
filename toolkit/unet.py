@@ -2,27 +2,40 @@ import torch
 import torch.nn as nn
 
 class DoubleConv(nn.Module):
-    def __init__(self, in_channels, out_channels, activation=nn.ReLU(inplace=True)):
-        super().__init__()
-        self.double_conv = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            activation,
-            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            activation
-        )
-    def forward(self, x):
-        return self.double_conv(x)
-        
+    def __init__(self, in_channels, out_channels, activation=nn.ReLU(inplace=True)):
+        super().__init__()
+        self.double_conv = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            activation,
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            activation
+        )
+    def forward(self, x):
+        return self.double_conv(x)
+
+class PixelShuffleUp(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+        # Expands channels by 4x, then rearranges them to double height & width
+        self.up = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels * 4, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels * 4),
+            nn.ReLU(inplace=True),
+            nn.PixelShuffle(2)
+        )
+    def forward(self, x):
+        return self.up(x)
+        
 class UNet(nn.Module):
-    def __init__(self, in_channels=4, out_channels=4, features=[64, 128, 256, 512, 512, 512, 512, 512]):
+    def __init__(self, in_channels=4, out_channels=4, features=[64, 128, 256, 512]):
         super().__init__()
         
         encoder_activation = nn.LeakyReLU(0.2, inplace=True)
         decoder_activation = nn.ReLU(inplace=True)
         
-        # Encoder (8 stages for 256x256 images)
+        # Encoder (3 stages for 256x256 images -> Bottleneck is 32x32)
         self.inc = DoubleConv(in_channels, features[0], activation=encoder_activation)
         self.down1 = nn.Sequential(
             nn.Conv2d(features[0], features[0], kernel_size=4, stride=2, padding=1, bias=False),
@@ -40,63 +53,21 @@ class UNet(nn.Module):
             nn.Conv2d(features[2], features[2], kernel_size=4, stride=2, padding=1, bias=False),
             nn.BatchNorm2d(features[2]),
             encoder_activation,
-            DoubleConv(features[2], features[3], activation=encoder_activation)
-        )
-        self.down4 = nn.Sequential(
-            nn.Conv2d(features[3], features[3], kernel_size=4, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(features[3]),
-            encoder_activation,
-            DoubleConv(features[3], features[4], activation=encoder_activation)
-        )
-        self.down5 = nn.Sequential(
-            nn.Conv2d(features[4], features[4], kernel_size=4, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(features[4]),
-            encoder_activation,
-            DoubleConv(features[4], features[5], activation=encoder_activation)
-        )
-        self.down6 = nn.Sequential(
-            nn.Conv2d(features[5], features[5], kernel_size=4, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(features[5]),
-            encoder_activation,
-            DoubleConv(features[5], features[6], activation=encoder_activation)
-        )
-        self.down7 = nn.Sequential(
-            nn.Conv2d(features[6], features[6], kernel_size=4, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(features[6]),
-            encoder_activation,
-            DoubleConv(features[6], features[7], activation=encoder_activation)  # Bottleneck
+            DoubleConv(features[2], features[3], activation=encoder_activation)  # Bottleneck
         )
 
-        # Decoder (8 stages with dropout on the first three upsampling blocks)
-        self.up1 = nn.ConvTranspose2d(features[7], features[6], kernel_size=2, stride=2)
+        # Decoder (3 stages with light 0.1 dropout on the first upsampling block)
+        self.up1 = PixelShuffleUp(features[3], features[2])
         self.conv1 = nn.Sequential(
-            DoubleConv(features[6] + features[6], features[6], activation=decoder_activation),
-            nn.Dropout(0.5)
+            DoubleConv(features[2] + features[2], features[2], activation=decoder_activation),
+            nn.Dropout(0.1)
         )
         
-        self.up2 = nn.ConvTranspose2d(features[6], features[5], kernel_size=2, stride=2)
-        self.conv2 = nn.Sequential(
-            DoubleConv(features[5] + features[5], features[5], activation=decoder_activation),
-            nn.Dropout(0.5)
-        )
+        self.up2 = PixelShuffleUp(features[2], features[1])
+        self.conv2 = DoubleConv(features[1] + features[1], features[1], activation=decoder_activation)
         
-        self.up3 = nn.ConvTranspose2d(features[5], features[4], kernel_size=2, stride=2)
-        self.conv3 = nn.Sequential(
-            DoubleConv(features[4] + features[4], features[4], activation=decoder_activation),
-            nn.Dropout(0.5)
-        )
-        
-        self.up4 = nn.ConvTranspose2d(features[4], features[3], kernel_size=2, stride=2)
-        self.conv4 = DoubleConv(features[3] + features[3], features[3], activation=decoder_activation)
-        
-        self.up5 = nn.ConvTranspose2d(features[3], features[2], kernel_size=2, stride=2)
-        self.conv5 = DoubleConv(features[2] + features[2], features[2], activation=decoder_activation)
-        
-        self.up6 = nn.ConvTranspose2d(features[2], features[1], kernel_size=2, stride=2)
-        self.conv6 = DoubleConv(features[1] + features[1], features[1], activation=decoder_activation)
-        
-        self.up7 = nn.ConvTranspose2d(features[1], features[0], kernel_size=2, stride=2)
-        self.conv7 = DoubleConv(features[0] + features[0], features[0], activation=decoder_activation)
+        self.up3 = PixelShuffleUp(features[1], features[0])
+        self.conv3 = DoubleConv(features[0] + features[0], features[0], activation=decoder_activation)
 
         self.outc = nn.Conv2d(features[0], out_channels, kernel_size=1)
         self.tanh = nn.Tanh()
@@ -105,65 +76,45 @@ class UNet(nn.Module):
         x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
-        x4 = self.down3(x3)
-        x5 = self.down4(x4)
-        x6 = self.down5(x5)
-        x7 = self.down6(x6)
-        x8 = self.down7(x7)
+        x4 = self.down3(x3)  # Bottleneck ($32 \times 32$)
 
-        x = self.up1(x8)
-        x = torch.cat([x, x7], dim=1)
+        x = self.up1(x4)
+        x = torch.cat([x, x3], dim=1)
         x = self.conv1(x)
         
         x = self.up2(x)
-        x = torch.cat([x, x6], dim=1)
+        x = torch.cat([x, x2], dim=1)
         x = self.conv2(x)
         
         x = self.up3(x)
-        x = torch.cat([x, x5], dim=1)
-        x = self.conv3(x)
-        
-        x = self.up4(x)
-        x = torch.cat([x, x4], dim=1)
-        x = self.conv4(x)
-
-        x = self.up5(x)
-        x = torch.cat([x, x3], dim=1)
-        x = self.conv5(x)
-
-        x = self.up6(x)
-        x = torch.cat([x, x2], dim=1)
-        x = self.conv6(x)
-
-        x = self.up7(x)
         x = torch.cat([x, x1], dim=1)
-        x = self.conv7(x)
+        x = self.conv3(x)
 
         return self.tanh(self.outc(x))
 
 class PatchDiscriminator(nn.Module):
-    def __init__(self, in_channels=6): # 3 channels for input + 3 channels for target/fake
-        super(PatchDiscriminator, self).__init__()
-        def discriminator_block(in_filters, out_filters, normalization=True):
-            layers = [nn.Conv2d(in_filters, out_filters, 4, stride=2, padding=1)]
-            if normalization:
-                layers.append(nn.InstanceNorm2d(out_filters))
-            layers.append(nn.LeakyReLU(0.2, inplace=True))
-            return layers
+    def __init__(self, in_channels=6): # 3 channels for input + 3 channels for target/fake
+        super(PatchDiscriminator, self).__init__()
+        def discriminator_block(in_filters, out_filters, normalization=True):
+            layers = [nn.Conv2d(in_filters, out_filters, 4, stride=2, padding=1)]
+            if normalization:
+                layers.append(nn.InstanceNorm2d(out_filters))
+            layers.append(nn.LeakyReLU(0.2, inplace=True))
+            return layers
 
-        self.model = nn.Sequential(
-            *discriminator_block(in_channels, 64, normalization=False),
-            *discriminator_block(64, 128),
-            *discriminator_block(128, 256),
-            *discriminator_block(256, 512),
-            nn.ZeroPad2d((1, 1, 1, 1)),
-            nn.Conv2d(512, 1, 4, padding=1) # Outputs a patch map of logits
-        )
+        self.model = nn.Sequential(
+            *discriminator_block(in_channels, 64, normalization=False),
+            *discriminator_block(64, 128),
+            *discriminator_block(128, 256),
+            *discriminator_block(256, 512),
+            nn.ZeroPad2d((1, 1, 1, 1)),
+            nn.Conv2d(512, 1, 4, padding=1) # Outputs a patch map of logits
+        )
 
-    def forward(self, img_input, img_target):
-        # Concatenate image and condition/target along channels
-        img_input = torch.cat((img_input, img_target), 1)
-        return self.model(img_input)
+    def forward(self, img_input, img_target):
+        # Concatenate image and condition/target along channels
+        img_input = torch.cat((img_input, img_target), 1)
+        return self.model(img_input)
 
 # --- Initialization Script ---
 # Instantiinn.BaseImageDatasetate train and validation sets separately
