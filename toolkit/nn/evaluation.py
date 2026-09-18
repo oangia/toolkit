@@ -4,11 +4,6 @@ import matplotlib.pyplot as plt
 
 class Evaluation:
     def __init__(self, input_tensor, output_tensor, target_tensor, data_range=2.0):
-        # Ensure 4D shape safety (N, C, H, W)
-        input_tensor = self._ensure_4d(input_tensor)
-        output_tensor = self._ensure_4d(output_tensor)
-        target_tensor = self._ensure_4d(target_tensor)
-
         self.input = input_tensor
         self.output = output_tensor
         self.target = target_tensor
@@ -21,13 +16,6 @@ class Evaluation:
         abs_error = torch.abs(output_tensor - target_tensor)
         mean_relative_error = torch.mean(abs_error) / tensor_range
         self.accuracy = (1.0 - mean_relative_error).item() * 100.0
-
-    def _ensure_4d(self, tensor):
-        if tensor.dim() == 2:
-            return tensor.unsqueeze(0).unsqueeze(0)
-        elif tensor.dim() == 3:
-            return tensor.unsqueeze(0)
-        return tensor
 
     def _tensor_to_numpy(self, tensor):
         tensor_cpu = tensor.squeeze(0).cpu() * 0.5 + 0.5
