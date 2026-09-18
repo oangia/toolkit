@@ -4,17 +4,17 @@ import matplotlib.pyplot as plt
 
 class Evaluation:
     def __init__(self, input_tensor, output_tensor, target_tensor, data_range=2.0):
-        self.input = input_tensor
-        self.output = output_tensor
-        self.target = target_tensor
+        # Detach tensors to prevent gradient tracking and memory leaks
+        self.input = input_tensor.detach()
+        self.output = output_tensor.detach()
+        self.target = target_tensor.detach()
 
         # 1. Standard L1 Loss
-        self.l1 = torch.mean(torch.abs(output_tensor - target_tensor)).item()
+        self.l1 = torch.mean(torch.abs(self.output - self.target)).item()
 
-        # 2. Continuous Percentage Accuracy (calculated via relative error magnitude)
-        tensor_range = data_range
-        abs_error = torch.abs(output_tensor - target_tensor)
-        mean_relative_error = torch.mean(abs_error) / tensor_range
+        # 2. Continuous Percentage Accuracy
+        abs_error = torch.abs(self.output - self.target)
+        mean_relative_error = torch.mean(abs_error) / data_range
         self.accuracy = (1.0 - mean_relative_error).item() * 100.0
 
     def _tensor_to_numpy(self, tensor):
