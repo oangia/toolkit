@@ -23,8 +23,7 @@ class ImageEnhanceDataset(BaseImageDataset):
     def __getitem__(self, idx):
         img_obj = UImage(self.paths[idx], channels=self.channels)
 
-        chunks = img_obj.slice_image(self.input_size)
-        target = random.choice(chunks)
+        target = img_obj.get_random_crop(self.input_size)
         input = UImage(target).lower_quality().toPil()
 
         t_tgt = self.transform(target)
