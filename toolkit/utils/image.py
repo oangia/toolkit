@@ -232,7 +232,7 @@ class UImage(BaseImage):
 
     def lower_quality(self):
         w, h = self.image.size    
-        scale_factor = random.randint(8, 16)  
+        scale_factor = 4 #random.randint(8, 16)  
         low_h = max(1, h // scale_factor)
         low_w = max(1, w // scale_factor)
     
