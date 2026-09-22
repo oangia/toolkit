@@ -245,12 +245,27 @@ class UImage(BaseImage):
         
         interp_name = random.choice(list(methods_map.keys()))
         downscale_filter = methods_map[interp_name]
-    
-        # 1. Downscale the image
-        low_img = self.image.resize((low_w, low_h), resample=downscale_filter)
-    
-        # 2. Upscale back to original size using nearest neighbor (matching your torch code)
         upscale_filter = PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST
-        self.image = low_img.resize((w, h), resample=upscale_filter)
+    
+        # Handle RGBA images separately to bypass premultiplied alpha conversion
+        if self.image.mode == "RGBA":
+            r, g, b, a = self.image.split()
+            rgb_img = PILImage.merge("RGB", (r, g, b))
+            
+            # 1. Downscale & upscale RGB channels independently
+            rgb_low = rgb_img.resize((low_w, low_h), resample=downscale_filter)
+            rgb_high = rgb_low.resize((w, h), resample=upscale_filter)
+            
+            # 2. Downscale & upscale Alpha channel independently
+            a_low = a.resize((low_w, low_h), resample=downscale_filter)
+            a_high = a_low.resize((w, h), resample=upscale_filter)
+            
+            # 3. Merge them back into RGBA
+            r_fin, g_fin, b_fin = rgb_high.split()
+            self.image = PILImage.merge("RGBA", (r_fin, g_fin, b_fin, a_high))
+        else:
+            # Standard resize for non-RGBA images
+            low_img = self.image.resize((low_w, low_h), resample=downscale_filter)
+            self.image = low_img.resize((w, h), resample=upscale_filter)
     
         return self
