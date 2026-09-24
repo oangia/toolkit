@@ -147,7 +147,7 @@ class UImage(BaseImage):
             new_height = max(img_height, tile_size)
             
             # Create a new background image filled with 0 and paste the original
-            padded_image = Image.new(self.image.mode, (new_width, new_height), color=0)
+            padded_image = PILImage.new(self.image.mode, (new_width, new_height), color=0)
             padded_image.paste(self.image, (0, 0))
             self.image = padded_image
             img_width, img_height = self.image.size
@@ -192,7 +192,7 @@ class UImage(BaseImage):
             new_height = max(img_height, tile_size)
             
             # Create a new background image filled with 0 and paste the original
-            padded_image = Image.new(self.image.mode, (new_width, new_height), color=0)
+            padded_image = PILImage.new(self.image.mode, (new_width, new_height), color=0)
             padded_image.paste(self.image, (0, 0))
             self.image = padded_image
             img_width, img_height = self.image.size
