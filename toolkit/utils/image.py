@@ -138,40 +138,48 @@ class UImage(BaseImage):
         return self
 
     def slice_image(self, tile_size: int = 512) -> list:
-        """Automatically slices the image into overlapping tiles of `tile_size`."""
+        """Automatically slices the image into overlapping tiles of `tile_size`, padding with zeros if smaller."""
         img_width, img_height = self.image.size
-
+    
+        # Pad the image with zeros if smaller than the tile size
         if img_width < tile_size or img_height < tile_size:
-            raise ValueError(f"Image size ({img_width}x{img_height}) is smaller than tile size ({tile_size}x{tile_size}).")
-
+            new_width = max(img_width, tile_size)
+            new_height = max(img_height, tile_size)
+            
+            # Create a new background image filled with 0 and paste the original
+            padded_image = Image.new(self.image.mode, (new_width, new_height), color=0)
+            padded_image.paste(self.image, (0, 0))
+            self.image = padded_image
+            img_width, img_height = self.image.size
+    
         def get_even_coords(size, tile):
             if size <= tile:
                 return [0]
-
+    
             travel = size - tile
             ideal_step = tile // 2
-
+    
             num_intervals = round(travel / ideal_step)
             if num_intervals < 1:
                 num_intervals = 1
-
+    
             coords = []
             for i in range(num_intervals + 1):
                 pos = int(i * travel / num_intervals)
                 if not coords or pos != coords[-1]:
                     coords.append(pos)
             return coords
-
+    
         self.x_coords = get_even_coords(img_width, tile_size)
         self.y_coords = get_even_coords(img_height, tile_size)
-
+    
         tiles = []
         for y in self.y_coords:
             for x in self.x_coords:
                 box = (x, y, x + tile_size, y + tile_size)
                 tile = self.image.crop(box)
                 tiles.append(tile)
-
+    
         return tiles
 
     def get_random_crop(self, tile_size: int = 512):
