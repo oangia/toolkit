@@ -183,11 +183,19 @@ class UImage(BaseImage):
         return tiles
 
     def get_random_crop(self, tile_size: int = 512):
-        """Directly crops a single random tile of `tile_size` without slicing the whole image."""
+        """Directly crops a single random tile of `tile_size`, padding with zeros if smaller."""
         img_width, img_height = self.image.size
     
+        # Pad the image with zeros if smaller than the tile size
         if img_width < tile_size or img_height < tile_size:
-            raise ValueError(f"Image size ({img_width}x{img_height}) is smaller than tile size ({tile_size}x{tile_size}).")
+            new_width = max(img_width, tile_size)
+            new_height = max(img_height, tile_size)
+            
+            # Create a new background image filled with 0 and paste the original
+            padded_image = Image.new(self.image.mode, (new_width, new_height), color=0)
+            padded_image.paste(self.image, (0, 0))
+            self.image = padded_image
+            img_width, img_height = self.image.size
     
         # Pick a random top-left (x, y) position within valid boundaries
         x = random.randint(0, img_width - tile_size)
