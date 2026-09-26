@@ -275,14 +275,15 @@ class UImage(BaseImage):
         a_high = a.resize((low_w, low_h), resample=downscale_filter).resize((w, h), resample=upscale_filter)
         
         # 2. Add noise directly to the resized RGB image
-        img_arr = np.array(rgb_high).astype(np.float32)
-        noise_mask = np.random.normal(noise[0], noise[1], img_arr.shape).astype(np.float32)
-        noisy_arr = np.clip(img_arr + noise_mask, 0, 255).astype(np.uint8)
-        
-        rgb_noisy = PILImage.fromarray(noisy_arr)
-        rn, gn, bn = rgb_noisy.split()
-        
-        # 3. Final merge into RGBA
-        self.image = PILImage.merge("RGBA", (rn, gn, bn, a_high))
+        if random.choice([0, 1]) == 0:
+            img_arr = np.array(rgb_high).astype(np.float32)
+            noise_mask = np.random.normal(noise[0], noise[1], img_arr.shape).astype(np.float32)
+            noisy_arr = np.clip(img_arr + noise_mask, 0, 255).astype(np.uint8)
+            
+            rgb_noisy = PILImage.fromarray(noisy_arr)
+            rn, gn, bn = rgb_noisy.split()
+            
+            # 3. Final merge into RGBA
+            self.image = PILImage.merge("RGBA", (rn, gn, bn, a_high))
         
         return self
