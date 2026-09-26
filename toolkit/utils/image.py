@@ -262,7 +262,7 @@ class UImage(BaseImage):
         upscale_filter = PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST
 
         # Optional: Apply Gaussian blur before downscaling
-        if blur_radius > 0:
+        if blur_radius > 0 and random.choice([0, 1]) == 0:
             self.image = self.image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
 
         # Split channels once
