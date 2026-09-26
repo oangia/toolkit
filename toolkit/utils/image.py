@@ -258,11 +258,10 @@ class UImage(BaseImage):
             "bicubic": PILImage.Resampling.BICUBIC if hasattr(PILImage, 'Resampling') else PILImage.BICUBIC,
         }
         
-        interp_name = random.choice(list(methods_map.keys()))
-        downscale_filter = methods_map[interp_name]
+        downscale_filter = methods_map[random.choice(list(methods_map.keys()))]
         upscale_filter = PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST
 
-        # Optional: Apply Gaussian blur before downscaling for a smoother look
+        # Optional: Apply Gaussian blur before downscaling
         if blur_radius > 0:
             self.image = self.image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
 
@@ -270,20 +269,23 @@ class UImage(BaseImage):
         r, g, b, a = self.image.split()
         rgb_img = PILImage.merge("RGB", (r, g, b))
         
-        # 1. Downscale & upscale RGB and Alpha independently (chained for cleaner lines)
+        # 1. Downscale & upscale RGB and Alpha independently
         rgb_high = rgb_img.resize((low_w, low_h), resample=downscale_filter).resize((w, h), resample=upscale_filter)
         a_high = a.resize((low_w, low_h), resample=downscale_filter).resize((w, h), resample=upscale_filter)
         
-        # 2. Add noise directly to the resized RGB image
+        # 2. Convert to NumPy array
+        img_arr = np.array(rgb_high).astype(np.float32)
+        
+        # 3. Add noise conditionally (50% chance)
         if random.choice([0, 1]) == 0:
-            img_arr = np.array(rgb_high).astype(np.float32)
             noise_mask = np.random.normal(noise[0], noise[1], img_arr.shape).astype(np.float32)
-            noisy_arr = np.clip(img_arr + noise_mask, 0, 255).astype(np.uint8)
-            
-            rgb_noisy = PILImage.fromarray(noisy_arr)
-            rn, gn, bn = rgb_noisy.split()
-            
-            # 3. Final merge into RGBA
-            self.image = PILImage.merge("RGBA", (rn, gn, bn, a_high))
+            img_arr = np.clip(img_arr + noise_mask, 0, 255)
+        
+        # 4. Finalize array and merge back into RGBA (happens every time)
+        noisy_arr = img_arr.astype(np.uint8)
+        rgb_noisy = PILImage.fromarray(noisy_arr)
+        rn, gn, bn = rgb_noisy.split()
+        
+        self.image = PILImage.merge("RGBA", (rn, gn, bn, a_high))
         
         return self
