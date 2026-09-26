@@ -246,12 +246,11 @@ class UImage(BaseImage):
         self.image = PILImage.fromarray(quantized_np)
         return self
 
-    def lower_quality(self, blur_radius=1.0):
+    def lower_quality(self, scale_factor=4, blur_radius=1.0):
         w, h = self.image.size    
-        scale_factor = 4 #random.randint(8, 16)  
         low_h = max(1, h // scale_factor)
         low_w = max(1, w // scale_factor)
-    
+
         # Map string modes to PIL Resampling filters
         methods_map = {
             "nearest": PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST,
@@ -262,30 +261,31 @@ class UImage(BaseImage):
         interp_name = random.choice(list(methods_map.keys()))
         downscale_filter = methods_map[interp_name]
         upscale_filter = PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST
-    
+
         # Optional: Apply Gaussian blur before downscaling for a smoother look
         if blur_radius > 0:
             self.image = self.image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
 
-        # Handle RGBA images separately to bypass premultiplied alpha conversion
-        if self.image.mode == "RGBA":
-            r, g, b, a = self.image.split()
-            rgb_img = PILImage.merge("RGB", (r, g, b))
-            
-            # 1. Downscale & upscale RGB channels independently
-            rgb_low = rgb_img.resize((low_w, low_h), resample=downscale_filter)
-            rgb_high = rgb_low.resize((w, h), resample=upscale_filter)
-            
-            # 2. Downscale & upscale Alpha channel independently
-            a_low = a.resize((low_w, low_h), resample=downscale_filter)
-            a_high = a_low.resize((w, h), resample=upscale_filter)
-            
-            # 3. Merge them back into RGBA
-            r_fin, g_fin, b_fin = rgb_high.split()
-            self.image = PILImage.merge("RGBA", (r_fin, g_fin, b_fin, a_high))
-        else:
-            # Standard resize for non-RGBA images
-            low_img = self.image.resize((low_w, low_h), resample=downscale_filter)
-            self.image = low_img.resize((w, h), resample=upscale_filter)
-    
+        # Split channels once
+        r, g, b, a = self.image.split()
+        rgb_img = PILImage.merge("RGB", (r, g, b))
+        
+        # 1. Downscale & upscale RGB and Alpha independently (chained for cleaner lines)
+        rgb_high = rgb_img.resize((low_w, low_h), resample=downscale_filter).resize((w, h), resample=upscale_filter)
+        a_high = a.resize((low_w, low_h), resample=downscale_filter).resize((w, h), resample=upscale_filter)
+        
+        # 2. Add noise directly to the resized RGB image
+        noise_mean = 8.0
+        noise_std = 16.0
+        
+        img_arr = np.array(rgb_high).astype(np.float32)
+        noise = np.random.normal(noise_mean, noise_std, img_arr.shape).astype(np.float32)
+        noisy_arr = np.clip(img_arr + noise, 0, 255).astype(np.uint8)
+        
+        rgb_noisy = PILImage.fromarray(noisy_arr)
+        rn, gn, bn = rgb_noisy.split()
+        
+        # 3. Final merge into RGBA
+        self.image = PILImage.merge("RGBA", (rn, gn, bn, a_high))
+        
         return self
