@@ -246,7 +246,7 @@ class UImage(BaseImage):
         self.image = PILImage.fromarray(quantized_np)
         return self
 
-    def lower_quality(self):
+    def lower_quality(self, blur_radius=1.0):
         w, h = self.image.size    
         scale_factor = 4 #random.randint(8, 16)  
         low_h = max(1, h // scale_factor)
@@ -263,6 +263,10 @@ class UImage(BaseImage):
         downscale_filter = methods_map[interp_name]
         upscale_filter = PILImage.Resampling.NEAREST if hasattr(PILImage, 'Resampling') else PILImage.NEAREST
     
+        # Optional: Apply Gaussian blur before downscaling for a smoother look
+        if blur_radius > 0:
+            self.image = self.image.filter(ImageFilter.GaussianBlur(radius=blur_radius))
+
         # Handle RGBA images separately to bypass premultiplied alpha conversion
         if self.image.mode == "RGBA":
             r, g, b, a = self.image.split()
