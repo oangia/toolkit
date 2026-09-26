@@ -246,7 +246,7 @@ class UImage(BaseImage):
         self.image = PILImage.fromarray(quantized_np)
         return self
 
-    def lower_quality(self, scale_factor=4, blur_radius=1.0):
+    def lower_quality(self, scale_factor=4, blur_radius=1.0, noise=(0.0, 8.0)):
         w, h = self.image.size    
         low_h = max(1, h // scale_factor)
         low_w = max(1, w // scale_factor)
@@ -275,12 +275,9 @@ class UImage(BaseImage):
         a_high = a.resize((low_w, low_h), resample=downscale_filter).resize((w, h), resample=upscale_filter)
         
         # 2. Add noise directly to the resized RGB image
-        noise_mean = 8.0
-        noise_std = 16.0
-        
         img_arr = np.array(rgb_high).astype(np.float32)
-        noise = np.random.normal(noise_mean, noise_std, img_arr.shape).astype(np.float32)
-        noisy_arr = np.clip(img_arr + noise, 0, 255).astype(np.uint8)
+        noise_mask = np.random.normal(noise[0], noise[1], img_arr.shape).astype(np.float32)
+        noisy_arr = np.clip(img_arr + noise_mask, 0, 255).astype(np.uint8)
         
         rgb_noisy = PILImage.fromarray(noisy_arr)
         rn, gn, bn = rgb_noisy.split()
