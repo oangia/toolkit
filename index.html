@@ -39,8 +39,8 @@
             { note: 'C4', freq: 261.63, name: 'C' },
             { note: 'D4', freq: 293.66, name: 'D' },
             { note: 'E4', freq: 329.63, name: 'E' },
-            { note: 'F4', freq: 349.23, name: 'F' },
-            { note: 'G4', freq: 392.00, name: 'G' },
+            //{ note: 'F4', freq: 349.23, name: 'F' },
+            //{ note: 'G4', freq: 392.00, name: 'G' },
             { note: 'A4', freq: 440.00, name: 'A' },
             { note: 'B4', freq: 493.88, name: 'B' },
             { note: 'C5', freq: 523.25, name: 'C' }
@@ -125,12 +125,12 @@
             timerRing.style.stroke = "#3b82f6";
             timerRing.style.strokeDashoffset = "0";
 
-            playPianoTone(C_MAJOR_SCALE[0].freq, 2.5);
+            playPianoTone(C_MAJOR_SCALE[0].freq, 1.5);
 
             currentTimeout = setTimeout(() => {
                 if (!isPlaying) return;
                 runRandomStep();
-            }, 2500);
+            }, 2000);
         }
 
         function runRandomStep() {
@@ -139,14 +139,14 @@
             const randomIndex = Math.floor(Math.random() * C_MAJOR_SCALE.length);
             const currentItem = C_MAJOR_SCALE[randomIndex];
 
-            playPianoTone(currentItem.freq, 3.5);
+            playPianoTone(currentItem.freq, 2.5);
             
             centerDisplay.textContent = "?";
             centerDisplay.className = "text-6xl font-black tracking-tight text-amber-400 animate-pulse";
             timerRing.style.stroke = "#f59e0b";
 
             const startTime = performance.now();
-            const duration = 3000;
+            const duration = 800;
 
             function updateTimer(timestamp) {
                 if (!isPlaying) return;
@@ -168,7 +168,7 @@
                     currentTimeout = setTimeout(() => {
                         if (!isPlaying) return;
                         runRandomStep();
-                    }, 2000);
+                    }, 800);
                 }
             }
 
