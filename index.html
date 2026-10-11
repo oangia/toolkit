@@ -97,7 +97,7 @@
 
         // --- LOAD INITIAL SETTINGS FROM COOKIES ---
         const savedSpeed = getCookie('earTrainerSpeed');
-        let guessDuration = savedSpeed ? parseInt(savedSpeed) : 800;
+        let guessDuration = savedSpeed ? parseInt(savedSpeed) : 1500;
 
         let savedNoteIndices = getCookie('earTrainerNotes');
         let defaultIndices = savedNoteIndices ? JSON.parse(savedNoteIndices) : ALL_NOTES.map((_, i) => i);
