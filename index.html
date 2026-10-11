@@ -16,7 +16,7 @@
     <aside class="w-full lg:w-80 bg-slate-800/60 backdrop-blur border-b lg:border-b-0 lg:border-r border-slate-700/60 p-6 flex flex-col gap-6">
         <div>
             <h1 class="text-xl font-bold tracking-tight text-white mb-1">🎹 Piano Ear Trainer</h1>
-            <p class="text-xs text-slate-400">Settings update instantly</p>
+            <p class="text-xs text-slate-400">Settings save automatically</p>
         </div>
 
         <hr class="border-slate-700">
@@ -41,7 +41,7 @@
                 <button id="select-all-btn" class="text-xs text-blue-400 hover:underline">Toggle All</button>
             </span>
             <div id="notes-checkbox-container" class="grid grid-cols-2 gap-2">
-                <!-- Checkboxes generated dynamically or statically -->
+                <!-- Checkboxes generated dynamically -->
             </div>
             <span id="note-error-msg" class="text-xs text-rose-400 hidden">Please select at least one note!</span>
         </div>
@@ -76,9 +76,33 @@
             { note: 'C5', freq: 523.25, name: 'C' }
         ];
 
-        // State variables
-        let activeNotes = [...ALL_NOTES]; // default all selected
-        let guessDuration = 800; // ms
+        // --- COOKIE HELPER FUNCTIONS ---
+        function setCookie(name, value, days = 365) {
+            const d = new Date();
+            d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+            let expires = "expires=" + d.toUTCString();
+            document.cookie = name + "=" + encodeURIComponent(value) + ";" + expires + ";path=/";
+        }
+
+        function getCookie(name) {
+            let nameEQ = name + "=";
+            let ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) == 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+            }
+            return null;
+        }
+
+        // --- LOAD INITIAL SETTINGS FROM COOKIES ---
+        const savedSpeed = getCookie('earTrainerSpeed');
+        let guessDuration = savedSpeed ? parseInt(savedSpeed) : 800;
+
+        let savedNoteIndices = getCookie('earTrainerNotes');
+        let defaultIndices = savedNoteIndices ? JSON.parse(savedNoteIndices) : ALL_NOTES.map((_, i) => i);
+        
+        let activeNotes = defaultIndices.map(i => ALL_NOTES[i]);
 
         let audioCtx = null;
         let isPlaying = false;
@@ -96,6 +120,10 @@
 
         const circumference = 2 * Math.PI * 44;
 
+        // Set initial slider UI state from loaded cookie
+        speedRange.value = guessDuration;
+        speedLabel.textContent = guessDuration + " ms";
+
         // --- RENDER CHECKBOXES DYNAMICALLY ---
         function initNoteCheckboxes() {
             notesContainer.innerHTML = '';
@@ -106,7 +134,7 @@
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.value = index;
-                checkbox.checked = true;
+                checkbox.checked = defaultIndices.includes(index);
                 checkbox.className = "w-4 h-4 rounded accent-blue-500 bg-slate-900 border-slate-700";
                 
                 checkbox.addEventListener('change', updateActiveNotes);
@@ -124,11 +152,18 @@
         function updateActiveNotes() {
             const checkboxes = notesContainer.querySelectorAll('input[type="checkbox"]');
             activeNotes = [];
+            const selectedIndices = [];
+
             checkboxes.forEach((cb) => {
                 if (cb.checked) {
-                    activeNotes.push(ALL_NOTES[parseInt(cb.value)]);
+                    const idx = parseInt(cb.value);
+                    activeNotes.push(ALL_NOTES[idx]);
+                    selectedIndices.push(idx);
                 }
             });
+
+            // Save selected note indices to cookie
+            setCookie('earTrainerNotes', JSON.stringify(selectedIndices));
 
             if (activeNotes.length === 0) {
                 noteErrorMsg.classList.remove('hidden');
@@ -142,6 +177,8 @@
         speedRange.addEventListener('input', (e) => {
             guessDuration = parseInt(e.target.value);
             speedLabel.textContent = guessDuration + " ms";
+            // Save speed to cookie
+            setCookie('earTrainerSpeed', guessDuration);
         });
 
         // Toggle All button
@@ -250,7 +287,7 @@
             function updateTimer(timestamp) {
                 if (!isPlaying) return;
                 const elapsed = timestamp - startTime;
-                const progress = elapsed / guessDuration; // uses dynamic speed slider value
+                const progress = elapsed / guessDuration;
 
                 timerRing.style.strokeDashoffset = circumference * Math.min(progress, 1);
 
@@ -285,7 +322,7 @@
             timerRing.style.strokeDashoffset = circumference;
         }
 
-        // Initialize UI
+        // Initialize UI and load selections
         initNoteCheckboxes();
         circleContainer.addEventListener('click', toggleSession);
     </script>
