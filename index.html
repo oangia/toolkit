@@ -44,6 +44,11 @@
                 <!-- Checkboxes generated dynamically -->
             </div>
             <span id="note-error-msg" class="text-xs text-rose-400 hidden">Please select at least one note!</span>
+            
+            <!-- Play Full Scale Button -->
+            <button id="play-scale-btn" class="mt-2 w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold rounded-lg transition-colors text-sm shadow-sm flex items-center justify-center gap-2 cursor-pointer">
+                🎵 Scale
+            </button>
         </div>
     </aside>
 
@@ -63,7 +68,6 @@
     </main>
 
     <!-- Load audio file properly -->
-    <script src="audio.js"></script>
     <script>
         const ALL_NOTES = [
             { note: 'C4', freq: 261.63, name: 'C' },
@@ -117,6 +121,7 @@
         const notesContainer = document.getElementById('notes-checkbox-container');
         const selectAllBtn = document.getElementById('select-all-btn');
         const noteErrorMsg = document.getElementById('note-error-msg');
+        const playScaleBtn = document.getElementById('play-scale-btn');
 
         const circumference = 2 * Math.PI * 44;
 
@@ -189,6 +194,34 @@
             updateActiveNotes();
         });
 
+        // Play Full Scale Button Listener
+        playScaleBtn.addEventListener('click', () => {
+            if (isPlaying) stopLoop();
+
+            // Play through all notes in ALL_NOTES sequentially
+            ALL_NOTES.forEach((item, index) => {
+                setTimeout(() => {
+                    centerDisplay.textContent = item.name;
+                    centerDisplay.className = "text-6xl font-black tracking-tight text-blue-400";
+                    timerRing.style.stroke = "#3b82f6";
+                    timerRing.style.strokeDashoffset = "0";
+
+                    playPianoTone(item.freq, 1.2);
+
+                    // Reset display after the final note finishes playing
+                    if (index === ALL_NOTES.length - 1) {
+                        setTimeout(() => {
+                            if (!isPlaying) {
+                                centerDisplay.textContent = "▶";
+                                centerDisplay.className = "text-6xl font-black tracking-tight text-white group-hover:scale-105 transition-transform";
+                                timerRing.style.strokeDashoffset = circumference;
+                            }
+                        }, 600);
+                    }
+                }, index * 400); // 400ms delay per note in the scale
+            });
+        });
+
         function getAudioContext() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -232,14 +265,6 @@
                 osc.start(now);
                 osc.stop(now + duration + 0.05);
             });
-        }
-
-        function playBase64Audio(letter) {
-            if (typeof AUDIO_BASE64_MAP === 'undefined') return;
-            const base64Uri = AUDIO_BASE64_MAP[letter];
-            if (!base64Uri) return;
-            const audio = new Audio(base64Uri);
-            audio.play().catch(err => console.error(err));
         }
 
         function toggleSession() {
@@ -294,8 +319,6 @@
                 if (elapsed < guessDuration) {
                     animationFrameId = requestAnimationFrame(updateTimer);
                 } else {
-                    //playBase64Audio(currentItem.name);
-
                     centerDisplay.textContent = currentItem.name;
                     centerDisplay.className = "text-6xl font-black tracking-tight text-emerald-400";
                     timerRing.style.stroke = "#10b981";
